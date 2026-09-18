@@ -336,29 +336,44 @@ frontend's `NEXT_PUBLIC_API_URL` and the backend's CORS origins.
 
 ### Backend → Hugging Face Space
 
-1. Create a Space: **SDK = Docker**, blank template. Its Git URL looks like
-   `https://huggingface.co/spaces/<user>/glyph`.
-2. Push this repo to it. The model bundle is tracked with Git LFS (it is over
-   the 10 MB plain-file limit), so LFS must be installed:
+Get a **write** token from <https://huggingface.co/settings/tokens>, then create
+the Space and set its variables in one command:
 
-   ```bash
-   git lfs install
-   git remote add space https://huggingface.co/spaces/<user>/glyph
-   git push space main
-   ```
+```powershell
+cd backend
+$env:HF_TOKEN="hf_..."                                    # bash: HF_TOKEN=hf_...
+python -m tools.deploy_space --space <your-user>/glyph
+```
 
-3. In **Settings → Variables and secrets**, set:
+That creates a Docker Space (if it doesn't exist) and sets `CORS_ORIGIN_REGEX`
+and `TTA_VARIANTS`. Then push the code — the model bundle is tracked with Git
+LFS because it is over Hugging Face's 10 MB plain-file limit:
 
-   | Variable | Value |
-   | --- | --- |
-   | `CORS_ORIGINS` | `https://<your-app>.vercel.app` |
-   | `CORS_ORIGIN_REGEX` | `https://<your-app>-.*\.vercel\.app` (optional, allows Vercel preview builds) |
-   | `TTA_VARIANTS` | `5` on the free 2-vCPU tier, to keep a verify near ~2 s |
+```bash
+git lfs install
+git remote add space https://huggingface.co/spaces/<your-user>/glyph
+git push space main          # username = your HF name, password = the token
+```
 
-The Space serves on port 7860; check `https://<user>-glyph.hf.space/api/health`.
+The first build takes roughly 5-10 minutes. The Space serves on port 7860;
+check `https://<user>-glyph.hf.space/api/health`.
+
+Prefer the web UI? Create the Space manually with **SDK = Docker**, push the
+same way, and set these under **Settings → Variables and secrets**:
+
+| Variable | Value |
+| --- | --- |
+| `CORS_ORIGINS` | `https://<your-app>.vercel.app` |
+| `CORS_ORIGIN_REGEX` | `https://[a-z0-9-]+\.vercel\.app` (allows Vercel preview builds) |
+| `TTA_VARIANTS` | `5` on the free 2-vCPU tier, to keep a verify near ~2 s |
+
 Free Spaces sleep when idle, so the first request after a nap pays a cold start
 (container boot plus a few seconds of model loading) — worth warning testers
 about, since it looks like a hang.
+
+Keep the Space **public**. A private Space refuses unauthenticated requests, and
+the browser calls it directly from the Vercel page, so a private Space breaks
+the frontend unless you add a server-side proxy route that holds an HF token.
 
 ### Frontend → Vercel
 
