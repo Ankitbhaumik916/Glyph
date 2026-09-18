@@ -61,6 +61,7 @@ export interface HealthResult {
   img_size?: number | null;
   embed_dim?: number | null;
   model_info?: Record<string, unknown> | null;
+  reviews_enabled?: boolean;
   error?: string | null;
 }
 
@@ -144,6 +145,67 @@ export async function previewSignature(
   if (crop) form.append("crop", JSON.stringify(crop));
   const response = await postForm("/api/preprocess", form, signal);
   return (await response.json()) as PreviewResult;
+}
+
+export interface ReviewInput {
+  rating: number;
+  verdict_correct: "yes" | "no" | "unsure" | null;
+  comment: string;
+  name: string;
+  distance?: number;
+  threshold?: number;
+  is_genuine?: boolean;
+  is_borderline?: boolean;
+  variant_spread?: number;
+}
+
+export interface ReviewRecord extends ReviewInput {
+  id: string;
+  submitted_at: string;
+}
+
+/** Anyone can leave a review; only the owner can read them back. */
+export async function submitReview(review: ReviewInput, signal?: AbortSignal): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(review),
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError({
+      code: "backend_unreachable",
+      message: `Could not reach the backend at ${API_URL}.`,
+    });
+  }
+  if (!response.ok) throw await toApiError(response);
+  return ((await response.json()) as { id: string }).id;
+}
+
+/** Owner-only: needs the admin key the server was started with. */
+export async function fetchReviews(
+  adminKey: string,
+  signal?: AbortSignal,
+): Promise<ReviewRecord[]> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/reviews`, {
+      headers: { "X-Admin-Key": adminKey },
+      cache: "no-store",
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError({
+      code: "backend_unreachable",
+      message: `Could not reach the backend at ${API_URL}.`,
+    });
+  }
+  if (!response.ok) throw await toApiError(response);
+  return ((await response.json()) as { reviews: ReviewRecord[] }).reviews;
 }
 
 export async function fetchHealth(signal?: AbortSignal): Promise<HealthResult> {

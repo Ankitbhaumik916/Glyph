@@ -15,3 +15,6 @@ opencv-python>=4.10,<5.0
 
 scikit-image>=0.24,<1.0
 pillow>=10.3,<12.0
+
+# Writes reviews to a private dataset repo (see app/reviews.py).
+huggingface-hub>=0.25,<1.0

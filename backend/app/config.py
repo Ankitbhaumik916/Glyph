@@ -61,5 +61,16 @@ CORS_ORIGINS = [
 # listed one by one. Set e.g. https://glyph-.*\.vercel\.app to allow them.
 CORS_ORIGIN_REGEX = os.getenv("CORS_ORIGIN_REGEX", "").strip() or None
 
+# --- Reviews -----------------------------------------------------------------
+# Testers leave a review after each comparison. They are written to a PRIVATE
+# Hugging Face dataset repo, because the Space's own disk does not survive a
+# restart. Both of these must be set for the feature to switch on.
+HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
+REVIEWS_DATASET = os.getenv("REVIEWS_DATASET", "").strip()  # e.g. AnkBhau/glyph-reviews
+
+# Gates the endpoint that reads reviews back. The dataset being private is the
+# real protection; this keeps the convenience endpoint from being world-readable.
+ADMIN_KEY = os.getenv("ADMIN_KEY", "").strip()
+
 # Inference is small; leaving torch to grab every core hurts more than it helps.
 TORCH_NUM_THREADS = int(os.getenv("TORCH_NUM_THREADS", "4"))

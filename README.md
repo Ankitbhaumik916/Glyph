@@ -296,6 +296,37 @@ NEXT_PUBLIC_API_URL=http://192.168.1.50:8000
 and add that origin to the backend's `CORS_ORIGINS`. `NEXT_PUBLIC_*` variables
 are inlined at build time — restart `npm run dev` after changing it.
 
+### Pages
+
+| Route | What it is |
+| --- | --- |
+| `/` | Landing page: looping storm video, how it works, the preview feature, honest accuracy numbers |
+| `/verify` | The tester. No sign-up - the landing CTA goes straight here |
+| `/admin` | Reviews left by testers. Asks for the admin key; owner only |
+
+### Reviews
+
+Testers can leave a rating, a "was the verdict correct?" answer and a comment
+after each comparison. Each review is written to a **private Hugging Face
+dataset repo** (the Space's own disk is wiped on restart), together with the
+distance, threshold and verdict it refers to, so a review reads on its own.
+
+Privacy is enforced by the repo being private - unauthenticated requests to it
+get a 401. The admin key only gates the convenience endpoint that reads them
+back into `/admin`; you can equally read them on huggingface.co.
+
+Three settings switch it on (see the deploy section for doing this in one
+command):
+
+| Setting | Where | Value |
+| --- | --- | --- |
+| `REVIEWS_DATASET` | Variable | `<user>/glyph-reviews` - created automatically on first review |
+| `HF_TOKEN` | **Secret** | A write token, so the Space can commit to that repo |
+| `ADMIN_KEY` | **Secret** | Whatever you want to type on `/admin` |
+
+With these unset the app still works; the review form just reports that reviews
+are not configured.
+
 ### What the UI shows
 
 - Two drag-and-drop (or click-to-browse) uploads. Once a photo is loaded you can
@@ -342,11 +373,18 @@ the Space and set its variables in one command:
 ```powershell
 cd backend
 $env:HF_TOKEN="hf_..."                                    # bash: HF_TOKEN=hf_...
-python -m tools.deploy_space --space <your-user>/glyph
+python -m tools.deploy_space --space <your-user>/glyph `
+  --reviews-dataset <your-user>/glyph-reviews `
+  --admin-key "something-only-you-know"
 ```
 
-That creates a Docker Space (if it doesn't exist) and sets `CORS_ORIGIN_REGEX`
-and `TTA_VARIANTS`. Then push the code — the model bundle is tracked with Git
+That creates a Docker Space (if it doesn't exist), sets `CORS_ORIGIN_REGEX` and
+`TTA_VARIANTS` as variables, and stores `HF_TOKEN` and `ADMIN_KEY` as secrets so
+reviews work. Drop the last two flags if you don't want reviews.
+
+> **Hugging Face now requires PRO to *create* a Docker Space** on free hardware;
+> Spaces created before that change keep working. If creation returns HTTP 402,
+> push to an existing Space instead and pass `--no-create`. Then push the code — the model bundle is tracked with Git
 LFS because it is over Hugging Face's 10 MB plain-file limit:
 
 ```bash

@@ -139,7 +139,7 @@ export default function SignatureDropzone({
   return (
     <div className="flex flex-col">
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <label htmlFor={inputId} className="text-sm font-semibold text-slate-900">
+        <label htmlFor={inputId} className="text-sm font-semibold text-white">
           {label}
         </label>
         <span className="text-xs text-slate-500">{hint}</span>
@@ -148,10 +148,10 @@ export default function SignatureDropzone({
       {previewUrl ? (
         <div
           className={`overflow-hidden rounded-lg border-2 ${
-            invalid ? "border-red-400" : "border-slate-300"
-          } bg-white`}
+            invalid ? "border-red-400/60" : "border-white/10"
+          } bg-white/[0.03]`}
         >
-          <div className="flex min-h-[16rem] items-center justify-center bg-slate-800 p-2">
+          <div className="flex min-h-[16rem] items-center justify-center bg-black/50 p-2">
             <ReactCrop
               crop={draftCrop}
               onChange={(_, percent) => setDraftCrop(percent)}
@@ -171,8 +171,8 @@ export default function SignatureDropzone({
             </ReactCrop>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3 py-2">
-            <p className="text-xs text-slate-600">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3 py-2">
+            <p className="text-xs text-slate-400">
               {crop ? (
                 <>Box drawn &middot; only this area is analysed</>
               ) : (
@@ -184,7 +184,7 @@ export default function SignatureDropzone({
                 <button
                   type="button"
                   onClick={() => onCropChange(null)}
-                  className="rounded-md px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
+                  className="rounded-md px-2 py-1 text-xs font-medium text-slate-300 ring-1 ring-white/15 transition-colors hover:bg-white/10"
                 >
                   Clear box
                 </button>
@@ -194,7 +194,7 @@ export default function SignatureDropzone({
                   <button
                     type="button"
                     onClick={() => inputRef.current?.click()}
-                    className="rounded-md px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
+                    className="rounded-md px-2 py-1 text-xs font-medium text-slate-300 ring-1 ring-white/15 transition-colors hover:bg-white/10"
                   >
                     Replace
                   </button>
@@ -202,7 +202,7 @@ export default function SignatureDropzone({
                     type="button"
                     onClick={remove}
                     aria-label={`Remove ${label}`}
-                    className="rounded-md px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
+                    className="rounded-md px-2 py-1 text-xs font-medium text-slate-300 ring-1 ring-white/15 transition-colors hover:bg-white/10"
                   >
                     Remove
                   </button>
@@ -211,8 +211,8 @@ export default function SignatureDropzone({
             </div>
           </div>
 
-          <div className="flex items-center gap-4 border-t border-slate-200 bg-slate-50 px-3 py-3">
-            <div className="relative h-[93px] w-[93px] shrink-0 overflow-hidden rounded border border-slate-300 bg-black">
+          <div className="flex items-center gap-4 border-t border-white/10 bg-black/30 px-3 py-3">
+            <div className="relative h-[93px] w-[93px] shrink-0 overflow-hidden rounded border border-white/10 bg-black">
               {previewResult && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -224,22 +224,22 @@ export default function SignatureDropzone({
               )}
               {preview.status === "loading" && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-white" />
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-amber-300" />
                 </div>
               )}
             </div>
             <div className="min-w-0 text-xs">
-              <p className="font-semibold text-slate-800">Model input preview</p>
+              <p className="font-semibold text-slate-200">Model input preview</p>
               {preview.status === "error" ? (
-                <p className="mt-1 text-red-700">{preview.message}</p>
+                <p className="mt-1 text-red-400">{preview.message}</p>
               ) : previewResult && preview.status === "ready" ? (
                 previewResult.signature_detected ? (
-                  <p className="mt-1 text-slate-600">
+                  <p className="mt-1 text-slate-400">
                     Should show only the signature strokes. If it shows edges, stripes or
                     fingers instead, draw a tighter box.
                   </p>
                 ) : (
-                  <p className="mt-1 font-medium text-amber-700">
+                  <p className="mt-1 font-medium text-amber-300">
                     No signature found{crop ? " inside the box" : ""}. Draw a box around the
                     signature.
                   </p>
@@ -269,17 +269,17 @@ export default function SignatureDropzone({
           tabIndex={disabled ? -1 : 0}
           aria-label={`${label}: drag and drop an image or press Enter to browse`}
           aria-disabled={disabled}
-          className={`flex h-64 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed p-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 ${
+          className={`flex h-64 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed p-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${
             invalid
-              ? "border-red-400 bg-red-50"
+              ? "border-red-400/60 bg-red-500/10"
               : isDragging
-                ? "border-slate-800 bg-slate-100"
-                : "border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100"
+                ? "border-amber-400/70 bg-amber-400/10"
+                : "border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.05]"
           } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
         >
           <div className="pointer-events-none text-center">
             <svg
-              className="mx-auto mb-2 h-8 w-8 text-slate-400"
+              className="mx-auto mb-2 h-8 w-8 text-slate-500"
               fill="none"
               stroke="currentColor"
               strokeWidth={1.5}
@@ -292,7 +292,7 @@ export default function SignatureDropzone({
                 d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 7.5L12 3m0 0L7.5 7.5M12 3v13.5"
               />
             </svg>
-            <p className="text-sm font-medium text-slate-700">
+            <p className="text-sm font-medium text-slate-300">
               Drop an image here, or <span className="underline">browse</span>
             </p>
             <p className="mt-1 text-xs text-slate-500">PNG, JPEG, BMP, WEBP or TIFF</p>
@@ -312,7 +312,7 @@ export default function SignatureDropzone({
 
       <p className="mt-2 min-h-[1.25rem] truncate text-xs" title={file?.name}>
         {localError ? (
-          <span className="text-red-600">{localError}</span>
+          <span className="text-red-400">{localError}</span>
         ) : file ? (
           <span className="text-slate-500">
             {file.name} &middot; {formatBytes(file.size)}

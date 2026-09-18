@@ -61,6 +61,11 @@ def main() -> None:
                     help="Create the Space private. NOTE: a browser cannot call a private Space "
                          "without a token, so the Vercel frontend would need a server-side proxy.")
     ap.add_argument("--no-create", action="store_true", help="Only set variables on an existing Space.")
+    ap.add_argument("--reviews-dataset", default="",
+                    help="Private dataset repo for reviews, e.g. AnkBhau/glyph-reviews. "
+                         "Also copies your token into the Space as a secret so it can write there.")
+    ap.add_argument("--admin-key", default="",
+                    help="Secret that unlocks /admin. Stored as a Space secret, not a variable.")
     args = ap.parse_args()
 
     token = os.getenv("HF_TOKEN", "").strip()
@@ -97,10 +102,25 @@ def main() -> None:
     if args.vercel_url:
         variables["CORS_ORIGINS"] = args.vercel_url.rstrip("/")
 
+    if args.reviews_dataset:
+        variables["REVIEWS_DATASET"] = args.reviews_dataset
+
     for key, value in variables.items():
         status, body = call("POST", f"/spaces/{args.space}/variables", token,
                             {"key": key, "value": value})
         print(f"  {'set' if status in (200, 201) else f'FAILED ({status}) {body}'}: {key}={value}")
+
+    # Secrets rather than variables: these are credentials, and the Space UI
+    # keeps secrets write-only instead of displaying them back.
+    secrets = {}
+    if args.reviews_dataset:
+        secrets["HF_TOKEN"] = token  # lets the Space write into the dataset repo
+    if args.admin_key:
+        secrets["ADMIN_KEY"] = args.admin_key
+    for key, value in secrets.items():
+        status, body = call("POST", f"/spaces/{args.space}/secrets", token,
+                            {"key": key, "value": value})
+        print(f"  {'set' if status in (200, 201) else f'FAILED ({status}) {body}'}: {key}=<hidden>")
 
     # Variable changes need a restart to take effect.
     status, _ = call("POST", f"/spaces/{args.space}/restart", token)

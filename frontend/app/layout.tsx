@@ -3,10 +3,10 @@ import "react-image-crop/dist/ReactCrop.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Glyph - Signature Verification",
+  title: "Glyph — Signature Verification",
   description:
-    "Glyph compares a test signature against a known-genuine reference using a Siamese "
-    + "network. Research prototype.",
+    "Compare a signature against a known-genuine reference, and see exactly what the "
+    + "model saw before it decided. Research prototype.",
 };
 
 export default function RootLayout({

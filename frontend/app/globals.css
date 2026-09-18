@@ -4,8 +4,36 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
-  @apply bg-slate-100 text-slate-900 antialiased;
+  @apply bg-ink text-slate-300 antialiased;
+}
+
+::selection {
+  @apply bg-amber-400/30 text-white;
+}
+
+/* Fades a section in as it enters the viewport. Starts visible so the page is
+   readable if the observer never runs (no JS, or reduced motion). */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 700ms ease, transform 700ms ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
 }

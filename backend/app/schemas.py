@@ -1,7 +1,7 @@
 """Response models. These define the contract the Next.js frontend codes against."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -65,6 +65,38 @@ class PreviewResponse(BaseModel):
     )
 
 
+class ReviewIn(BaseModel):
+    """A tester's feedback on one comparison."""
+
+    rating: int = Field(..., ge=1, le=5, description="1-5 stars.")
+    verdict_correct: Literal["yes", "no", "unsure"] | None = Field(
+        None, description="Did the app's verdict match what the tester knew to be true?"
+    )
+    comment: str = Field("", max_length=2000)
+    name: str = Field("", max_length=120, description="Optional, so you can follow up.")
+    # Context copied from the result, so a review is readable on its own.
+    distance: float | None = None
+    threshold: float | None = None
+    is_genuine: bool | None = None
+    is_borderline: bool | None = None
+    variant_spread: float | None = None
+
+
+class ReviewAck(BaseModel):
+    id: str
+    status: str = "saved"
+
+
+class ReviewRecord(ReviewIn):
+    id: str
+    submitted_at: str
+
+
+class ReviewList(BaseModel):
+    reviews: list[ReviewRecord]
+    count: int
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str
@@ -92,4 +124,5 @@ class HealthResponse(BaseModel):
     img_size: int | None = None
     embed_dim: int | None = None
     model_info: dict[str, Any] | None = None
+    reviews_enabled: bool = False
     error: str | None = None

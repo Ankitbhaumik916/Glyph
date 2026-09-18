@@ -9,7 +9,7 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, Header, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -17,7 +17,16 @@ from . import config
 from .cropping import parse_crop
 from .errors import VerificationError
 from .model_service import verifier
-from .schemas import ErrorResponse, HealthResponse, PreviewResponse, VerifyResponse
+from .reviews import store as review_store
+from .schemas import (
+    ErrorResponse,
+    HealthResponse,
+    PreviewResponse,
+    ReviewAck,
+    ReviewIn,
+    ReviewList,
+    VerifyResponse,
+)
 
 CROP_FIELD_DESCRIPTION = (
     'Optional JSON crop box in 0-1 units of the EXIF-oriented image, e.g. '
@@ -116,6 +125,7 @@ async def health() -> HealthResponse:
         bundle_threshold=round(verifier.bundle_threshold, 6),
         threshold_source=verifier.threshold_source,
         borderline_band=round(config.BORDERLINE_BAND, 4),
+        reviews_enabled=review_store.enabled,
         img_size=verifier.img_size,
         embed_dim=verifier.embed_dim,
         model_info=verifier.metadata,
@@ -185,3 +195,32 @@ def preprocess_preview(
     user adjusts the crop - before spending a verification on it."""
     label = field if field in ("reference", "test") else "uploaded"
     return PreviewResponse(**verifier.preview(image.file.read(), label, parse_crop(crop, label)))
+
+
+@app.post(
+    "/api/reviews",
+    response_model=ReviewAck,
+    responses={503: {"model": ErrorResponse}},
+    tags=["reviews"],
+)
+def submit_review(review: ReviewIn) -> ReviewAck:
+    """Save a tester's feedback on one comparison.
+
+    Anyone who can use the app can leave a review; only the owner can read them
+    back, because they land in a private dataset repo.
+    """
+    review_id = review_store.submit(review.model_dump())
+    return ReviewAck(id=review_id)
+
+
+@app.get(
+    "/api/reviews",
+    response_model=ReviewList,
+    responses={401: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+    tags=["reviews"],
+)
+def list_reviews(x_admin_key: str | None = Header(None)) -> ReviewList:
+    """Read the reviews back. Requires the admin key in an X-Admin-Key header."""
+    review_store.authorize(x_admin_key)
+    reviews = review_store.list()
+    return ReviewList(reviews=reviews, count=len(reviews))
