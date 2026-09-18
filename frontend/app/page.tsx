@@ -1,243 +1,225 @@
 import Link from "next/link";
 
-import Reveal from "@/components/Reveal";
-import SiteNav from "@/components/SiteNav";
+import HeroMotion from "@/components/HeroMotion";
+import "./landing.css";
 
-const STEPS = [
-  {
-    n: "01",
-    title: "Upload two signatures",
-    body: "A known-genuine reference and the one in question. Photos of paper are fine - no scanner needed.",
-  },
-  {
-    n: "02",
-    title: "Box the signature",
-    body: "Drag a box so cloth, fingers and shadows stay out. Its exact size barely matters: the box is re-tightened to the ink itself.",
-  },
-  {
-    n: "03",
-    title: "Read the verdict",
-    body: "A distance, a threshold, and an honest answer - including 'too close to call' when the pair sits on the boundary.",
-  },
-];
+/** Adds the entrance pre-state before first paint; the timeline removes it. */
+const PRE_SCRIPT = `(function(){var d=document.documentElement;
+if(!('animate' in Element.prototype))return;
+if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+d.classList.add('pre');
+setTimeout(function(){d.classList.remove('pre')},4000);})();`;
 
-const FACTS = [
-  { value: "0.17-0.23", label: "Equal error rate", note: "on the datasets it was trained against" },
-  { value: "~1 in 5", label: "Comparisons it gets wrong", note: "in both directions, at the chosen threshold" },
-  { value: "155x155", label: "What the model actually sees", note: "after binarization and stroke normalization" },
-];
+const Chevron = () => (
+  <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <path d="m6.6 3.6 6 5.4-6 5.4" stroke="#fff" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 export default function Landing() {
   return (
-    <>
-      <SiteNav />
-
-      {/* ---------- Hero ---------- */}
-      <section className="relative flex min-h-[100svh] items-center justify-center overflow-hidden">
+    <div className="glyph-page">
+      <script dangerouslySetInnerHTML={{ __html: PRE_SCRIPT }} />
+      <div className="card">
         <video
-          className="absolute inset-0 h-full w-full object-cover"
+          className="bg"
           autoPlay
           muted
           loop
           playsInline
+          preload="auto"
+          disablePictureInPicture
+          aria-hidden="true"
           poster="/media/hero-poster.jpg"
-          aria-hidden="true"
-        >
-          <source src="/media/hero.mp4" type="video/mp4" />
-        </video>
-        {/* Two washes: one to seat the text, one to blend into the next section. */}
-        <div className="absolute inset-0 bg-ink/45" aria-hidden="true" />
-        <div
-          className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent to-ink"
-          aria-hidden="true"
+          src="/media/hero.mp4"
         />
+        <div className="tint" />
 
-        <div className="relative z-10 mx-auto max-w-4xl px-6 text-center">
-          <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/30 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-amber-200 backdrop-blur-sm">
-            Signature verification
-          </p>
-          <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
-            Every hand leaves
-            <span className="mt-2 block font-display italic text-amber-200">its own light</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-pretty text-base text-slate-300 sm:text-lg">
-            Compare a signature against a known-genuine reference, and see exactly what the
-            model saw before it decided.
-          </p>
-
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/verify"
-              className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-amber-200"
-            >
-              Test a signature
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-ink text-white transition-transform group-hover:translate-x-0.5">
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                  <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            </Link>
-            <a
-              href="#how"
-              className="rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              How it works
-            </a>
-          </div>
-        </div>
-
-        <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-[11px] uppercase tracking-[0.25em] text-white/40">
-          Scroll
-        </div>
-      </section>
-
-      {/* ---------- How it works ---------- */}
-      <section id="how" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-24 sm:py-32">
-        <Reveal>
-          <p className="text-xs font-medium uppercase tracking-[0.25em] text-amber-300">How it works</p>
-          <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            Three steps, about a minute
-          </h2>
-        </Reveal>
-
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {STEPS.map((step, i) => (
-            <Reveal key={step.n} delay={i * 110}>
-              <div className="h-full rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-transparent p-6 transition-colors hover:border-amber-400/30">
-                <span className="font-display text-3xl text-amber-300/70">{step.n}</span>
-                <h3 className="mt-4 text-lg font-semibold text-white">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">{step.body}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ---------- What the model sees ---------- */}
-      <section id="preview" className="scroll-mt-24 border-y border-white/10 bg-ink-soft">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-24 sm:py-32 lg:grid-cols-2">
-          <Reveal>
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-amber-300">Not a black box</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              See what the model actually saw
-            </h2>
-            <p className="mt-5 text-pretty leading-relaxed text-slate-400">
-              Before a score means anything, the signature has to survive preprocessing:
-              locating the document, evening out the lighting, separating ink from paper,
-              straightening, and thinning every stroke to a constant width.
-            </p>
-            <p className="mt-4 text-pretty leading-relaxed text-slate-400">
-              Glyph shows you that 155&times;155 image for both signatures, live, while you
-              adjust the box. If it comes out as paper edges or a thumb instead of strokes,
-              you know the score is meaningless - instead of trusting a confident-looking
-              number built on nothing.
-            </p>
-            <Link
-              href="/verify"
-              className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-amber-300 transition-colors hover:text-amber-200"
-            >
-              Try it on your own signature
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+        <div className="stack">
+          {/* ---------------- header ---------------- */}
+          <div className="row">
+            <Link className="brand l t" style={{ "--x": 68, "--y": 47 } as React.CSSProperties} href="/">
+              {/* Signature stroke, drawn in one gesture - the product's own mark. */}
+              <svg className="mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <circle cx="20" cy="20" r="18.4" stroke="#f2f6fc" strokeWidth="1.1" opacity=".55" />
+                <path
+                  d="M7.5 26.5c4.2-1.2 6.6-12.4 8.6-11.6 2 .8-1.4 15.4 1.6 15.1 3-.3 4.2-12.6 6.6-11.8 2.3.8.2 9.3 2.8 9 1.9-.2 3.6-2.4 5.4-4.6"
+                  stroke="#f8b55c"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
+              <b className="sx" style={{ "--sx": 0.894 } as React.CSSProperties}>
+                Glyph
+              </b>
             </Link>
-          </Reveal>
 
-          <Reveal delay={140}>
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-5 shadow-glow">
-              <div className="flex items-center justify-between text-[11px] uppercase tracking-widest text-slate-500">
-                <span>Reference</span>
-                <span>Test</span>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-4">
-                {["reference", "test"].map((which) => (
-                  <div
-                    key={which}
-                    className="aspect-square rounded-lg border border-white/10 bg-black p-3"
-                  >
-                    {/* Illustrative stroke, not a real signature. */}
-                    <svg viewBox="0 0 120 120" className="h-full w-full" aria-hidden="true">
-                      <path
-                        d={
-                          which === "reference"
-                            ? "M12 78c14-6 18-40 26-38s-4 46 6 44 14-34 22-32 2 26 12 24 16-12 22-18"
-                            : "M14 74c13-8 17-38 25-36s-3 44 7 42 13-32 21-30 3 24 13 22 15-10 20-16"
-                        }
-                        fill="none"
-                        stroke="rgba(255,255,255,0.85)"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-4 text-xs text-slate-500">
-                Binarized, deskewed, stroke-normalized - exactly the input the network scores.
-              </p>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ---------- Accuracy ---------- */}
-      <section id="accuracy" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-24 sm:py-32">
-        <Reveal>
-          <p className="text-xs font-medium uppercase tracking-[0.25em] text-amber-300">Where it stands</p>
-          <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            A decision-support signal, not a verdict
-          </h2>
-          <p className="mt-5 max-w-2xl text-pretty leading-relaxed text-slate-400">
-            Glyph is a research prototype, and it is more useful when it is honest about
-            that. Roughly one comparison in five is wrong at the current operating point, in
-            both directions, so a result is a prompt to look closer - never the last word.
-          </p>
-        </Reveal>
-
-        <div className="mt-14 grid gap-6 sm:grid-cols-3">
-          {FACTS.map((fact, i) => (
-            <Reveal key={fact.label} delay={i * 110}>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
-                <p className="font-display text-3xl text-amber-200">{fact.value}</p>
-                <p className="mt-3 text-sm font-semibold text-white">{fact.label}</p>
-                <p className="mt-1 text-xs text-slate-500">{fact.note}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-
-        <Reveal delay={160}>
-          <div className="mt-14 flex flex-col items-start justify-between gap-6 rounded-2xl border border-amber-400/20 bg-gradient-to-r from-amber-400/10 to-transparent p-8 sm:flex-row sm:items-center">
-            <div>
-              <h3 className="text-xl font-semibold text-white">Try it on a pair you know</h3>
-              <p className="mt-1 text-sm text-slate-400">
-                No account, no sign-up. Two photos and about a minute.
-              </p>
-            </div>
-            <Link
-              href="/verify"
-              className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-amber-200"
+            <button
+              className="burger"
+              type="button"
+              aria-label="Open menu"
+              aria-expanded="false"
+              aria-controls="site-menu"
             >
-              Open the tester
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-ink text-white transition-transform group-hover:translate-x-0.5">
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                  <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              <i />
+              <i />
+            </button>
+
+            <div className="menu" id="site-menu">
+              <nav className="nav">
+                <svg className="n-home" viewBox="0 0 20 21" fill="none" aria-hidden="true">
+                  <path
+                    d="M2 8.4 10 2l8 6.4V18a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"
+                    stroke="#f2f6fc"
+                    strokeWidth="1.7"
+                    strokeLinejoin="round"
+                  />
                 </svg>
+                <Link className="n-explore" href="/">
+                  Overview
+                </Link>
+                <hr className="n-div" />
+                <svg className="n-grid" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <rect x="1" y="1" width="7.4" height="7.4" rx="1.7" stroke="#f2f6fc" strokeWidth="1.7" />
+                  <rect x="11.6" y="1" width="7.4" height="7.4" rx="1.7" stroke="#f2f6fc" strokeWidth="1.7" />
+                  <rect x="1" y="11.6" width="7.4" height="7.4" rx="1.7" stroke="#f2f6fc" strokeWidth="1.7" />
+                  <rect x="11.6" y="11.6" width="7.4" height="7.4" rx="1.7" stroke="#f2f6fc" strokeWidth="1.7" />
+                </svg>
+                <Link className="n-product" href="/verify">
+                  Tester
+                </Link>
+              </nav>
+
+              <Link className="cta l t r" style={{ "--x": 58, "--y": 30 } as React.CSSProperties} href="/verify">
+                <span>Test a signature</span>
+                <span className="knob">
+                  <Chevron />
+                </span>
+              </Link>
+            </div>
+          </div>
+
+          {/* ---------------- hero ---------------- */}
+          <div className="hero-blk">
+            <p
+              className="eyebrow l c sx"
+              style={{ "--x": 65.7, "--y": -209.2, "--sx": 0.9293 } as React.CSSProperties}
+            >
+              Siamese signature verification
+            </p>
+
+            <h1 className="hero l c" style={{ "--x": 62.6, "--y": -167.3 } as React.CSSProperties}>
+              <span className="sx" style={{ "--sx": 0.9431 } as React.CSSProperties}>
+                Every hand leaves
+              </span>
+              <br />
+              <span className="sx" style={{ "--sx": 0.9792 } as React.CSSProperties}>
+                its own light
+              </span>
+            </h1>
+
+            <div className="tagrow">
+              <span className="play l c" style={{ "--x": 66, "--y": 34 } as React.CSSProperties}>
+                <svg viewBox="0 0 13 14" aria-hidden="true">
+                  <path d="M1.4 1.3 11.6 7 1.4 12.7z" fill="#0b1526" />
+                </svg>
+              </span>
+              <span
+                className="tag l c sx"
+                style={{ "--x": 131, "--y": 48.7, "--sx": 0.8973 } as React.CSSProperties}
+              >
+                See exactly what the model saw.
+              </span>
+            </div>
+
+            <aside className="panel l c r" style={{ "--x": 58, "--y": -165 } as React.CSSProperties}>
+              <span className="p-title sx" style={{ "--sx": 0.8707 } as React.CSSProperties}>
+                Threshold
+              </span>
+              <span className="dot" />
+              <span className="shield">
+                <svg viewBox="0 0 34 34" fill="none" aria-hidden="true">
+                  <path
+                    d="M4 23c3.6-1 5.6-10.6 7.4-9.9 1.7.7-1.2 13.1 1.4 12.9 2.5-.3 3.6-10.8 5.6-10.1 2 .7.2 7.9 2.4 7.7 1.6-.2 3-2 4.6-3.9"
+                    stroke="#101c33"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <p className="p-sub sx" style={{ "--sx": 0.8899 } as React.CSSProperties}>
+                Genuine at or
+                <br />
+                below 0.39 on
+                <br />
+                the distance scale
+              </p>
+              <div className="scale">
+                <span>0</span>
+                <span>0.5</span>
+                <span>1.0</span>
+                <span>2.0</span>
+              </div>
+              <div className="track">
+                <i />
+              </div>
+            </aside>
+          </div>
+
+          {/* ---------------- stats ---------------- */}
+          <div className="row">
+            <div className="stats">
+              <div className="stat">
+                <span className="num l b sx" style={{ "--x": 64, "--y": 60.4, "--sx": 1 } as React.CSSProperties}>
+                  0.39
+                </span>
+                <span
+                  className="lbl l b sx"
+                  style={{ "--x": 295, "--y": 73.2, "--sx": 0.9634 } as React.CSSProperties}
+                >
+                  Decision
+                  <br />
+                  threshold in
+                  <br />
+                  distance units
+                </span>
+              </div>
+              <span className="slash l b" style={{ "--x": 418, "--y": 76 } as React.CSSProperties} />
+              <div className="stat">
+                <span
+                  className="num l b sx"
+                  style={{ "--x": 480, "--y": 60.4, "--sx": 0.9858 } as React.CSSProperties}
+                >
+                  20%
+                </span>
+                <span
+                  className="lbl l b sx"
+                  style={{ "--x": 716, "--y": 96.7, "--sx": 0.9209 } as React.CSSProperties}
+                >
+                  Comparisons
+                  <br />
+                  it gets wrong
+                </span>
+              </div>
+            </div>
+
+            <Link className="meet l b r" style={{ "--x": 59, "--y": 66 } as React.CSSProperties} href="/verify">
+              <span className="thumb">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img alt="" style={{ objectPosition: "60% 50%" }} src="/media/hero-poster.jpg" />
+              </span>
+              <b>See a live result</b>
+              <span className="knob">
+                <Chevron />
               </span>
             </Link>
           </div>
-        </Reveal>
-      </section>
-
-      <footer className="border-t border-white/10 bg-ink-soft">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-10 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>Glyph &middot; Siamese signature verification</p>
-          <p className="max-w-lg text-pretty">
-            Research prototype - use as a decision-support signal alongside expert review,
-            not a sole determinant.
-          </p>
         </div>
-      </footer>
-    </>
+      </div>
+
+      <HeroMotion />
+    </div>
   );
 }

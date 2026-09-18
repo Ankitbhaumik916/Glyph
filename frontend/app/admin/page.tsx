@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import SiteNav from "@/components/SiteNav";
+import AppHeader from "@/components/AppHeader";
 import { ApiError, fetchReviews, type ReviewRecord } from "@/lib/api";
 
 const KEY_STORAGE = "glyph-admin-key";
@@ -72,8 +72,8 @@ export default function AdminPage() {
 
   return (
     <>
-      <SiteNav />
-      <main className="mx-auto w-full max-w-5xl px-4 pb-20 pt-28 sm:px-6">
+      <AppHeader current="admin" />
+      <main className="mx-auto w-full max-w-5xl px-4 pb-20 pt-8 sm:px-6">
         <h1 className="text-2xl font-semibold tracking-tight text-white">Reviews</h1>
         <p className="mt-1 text-sm text-slate-400">
           Feedback left by testers. Stored in a private dataset repo - this page just reads it.

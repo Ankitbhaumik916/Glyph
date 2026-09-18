@@ -1,0 +1,603 @@
+/* ============================================================================
+   Glyph landing — design-unit system.
+
+   Every size is expressed in --u, one reference pixel of a measured 1280x960
+   comp, so the whole composition scales as one piece and never reflows.
+
+   Palette note: the source spec was measured over a pale studio video and used
+   near-black type on a near-white frame. Glyph's hero clip is a dark storm, so
+   the *tokens* are inverted here (light type, dark-tinted glass) while every
+   measurement, offset and --sx tracking value is kept exactly as specified.
+   ========================================================================== */
+
+:root {
+  --u: min(100vw / 1280, 100vh / 960);
+
+  --ink: #f2f6fc;          /* primary type, over dark video */
+  --ink-soft: #d8e2ef;
+  --muted: #9dabc1;
+  --muted2: #b3c0d2;
+  --frame: #05070b;        /* backing behind the video plate */
+  --cta: #f4e8d4;          /* warm near-white, picked from the light shaft */
+  --cta-ink: #10182a;
+  --cta-knob: #1b2433;
+  --meet-knob: #c2823a;
+  --accent: #f8b55c;
+  --track: rgba(255, 255, 255, 0.16);
+}
+@supports (height: 100dvh) {
+  :root { --u: min(100vw / 1280, 100dvh / 960); }
+}
+
+.glyph-page * { margin: 0; padding: 0; box-sizing: border-box; }
+
+.glyph-page {
+  position: fixed;
+  inset: 0;
+  background: var(--frame);
+  color: var(--ink);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.card { position: absolute; inset: 0; isolation: isolate; }
+
+/* ---------- background plate ---------- */
+.bg {
+  position: absolute;
+  left: -2px;
+  top: -2px;
+  width: calc(100vw + 4px);
+  height: calc(100vh + 4px);
+  object-fit: cover;
+  object-position: 50% 50%;
+  z-index: 0;
+  filter: brightness(1.006) saturate(0.965);
+  transform: scale(1.002); /* with the 2px bleed, hides subpixel seams */
+}
+@supports (height: 100dvh) {
+  .bg { height: calc(100dvh + 4px); }
+}
+/* Seats light type on a dark, busy plate without washing the video out. */
+.tint {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(4, 7, 13, 0.55) 0%, rgba(4, 7, 13, 0.18) 38%, rgba(4, 7, 13, 0.68) 100%),
+    rgba(6, 10, 18, 0.14);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ---------- absolute-position helpers ----------
+   On wide screens the wrappers vanish and children position against .card. */
+.stack, .row, .hero-blk, .tagrow, .stats, .stat { display: contents; }
+.l { position: absolute; z-index: 2; }
+.t { left: calc((var(--x) + 13) * var(--u)); top: calc((var(--y) + 15) * var(--u)); }
+.c { left: calc((var(--x) + 13) * var(--u)); top: calc(50% + (var(--y) - 2) * var(--u)); }
+.b { left: calc((var(--x) + 13) * var(--u)); bottom: calc((var(--y) + 19) * var(--u)); }
+.r { left: auto; right: calc((var(--x) + 19) * var(--u)); }
+/* optical width-tracking, matched to the comp's type metrics */
+.sx { display: inline-block; transform-origin: left top; transform: scaleX(var(--sx, 1)); }
+
+/* ---------- brand ---------- */
+.brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  height: calc(39 * var(--u));
+}
+.mark { width: calc(39 * var(--u)); height: calc(39 * var(--u)); display: block; flex: none; }
+.brand b {
+  font-size: calc(22 * var(--u));
+  font-weight: 520;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-left: calc(7.7 * var(--u));
+}
+
+/* ---------- nav pill ---------- */
+.nav {
+  position: absolute;
+  left: 50%;
+  transform: translateX(calc(-50% - 3 * var(--u)));
+  top: calc((31 + 15) * var(--u));
+  width: calc(293 * var(--u));
+  height: calc(67 * var(--u));
+  border-radius: 999px;
+  background: rgba(10, 15, 24, 0.5);
+  border: calc(1 * var(--u)) solid rgba(255, 255, 255, 0.2);
+  -webkit-backdrop-filter: blur(calc(40 * var(--u)));
+  backdrop-filter: blur(calc(40 * var(--u)));
+  box-shadow:
+    0 0 0 calc(1.3 * var(--u)) rgba(255, 255, 255, 0.06),
+    0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+.nav > * { position: absolute; }
+.nav a {
+  text-decoration: none;
+  display: block;
+  font-size: calc(15 * var(--u));
+  font-weight: 570;
+  letter-spacing: -0.0561em;
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.nav i { display: block; }
+.n-home { left: calc(36 * var(--u)); top: calc(22 * var(--u)); width: calc(21.3 * var(--u)); height: calc(22.4 * var(--u)); }
+.n-explore { left: calc(72 * var(--u)); top: calc(26 * var(--u)); }
+.n-div {
+  left: calc(144 * var(--u));
+  top: calc(18 * var(--u));
+  width: calc(1.5 * var(--u));
+  height: calc(31 * var(--u));
+  background: rgba(255, 255, 255, 0.25);
+  border: 0;
+}
+.n-grid { left: calc(168 * var(--u)); top: calc(24 * var(--u)); width: calc(20.2 * var(--u)); height: calc(20.2 * var(--u)); }
+.n-product { left: calc(203.8 * var(--u)); top: calc(26 * var(--u)); }
+
+/* ---------- primary CTA ---------- */
+.cta {
+  width: calc(217 * var(--u));
+  height: calc(70 * var(--u));
+  border-radius: 999px;
+  background: var(--cta);
+  text-decoration: none;
+  display: block;
+  box-shadow: 0 calc(10 * var(--u)) calc(24 * var(--u)) rgba(0, 0, 0, 0.32);
+}
+.cta span {
+  position: absolute;
+  left: calc(30 * var(--u));
+  top: calc(27.55 * var(--u));
+  font-size: calc(17.5 * var(--u));
+  font-weight: 400;
+  letter-spacing: -0.0442em;
+  line-height: 1;
+  color: var(--cta-ink);
+  white-space: nowrap;
+}
+.knob {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--cta-knob);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cta .knob { left: calc(156 * var(--u)); top: calc(10.5 * var(--u)); width: calc(49 * var(--u)); height: calc(49 * var(--u)); }
+.knob svg { width: calc(17 * var(--u)); height: calc(17 * var(--u)); }
+
+/* ---------- hero type ---------- */
+.eyebrow {
+  font-size: calc(16 * var(--u));
+  font-weight: 470;
+  letter-spacing: -0.015em;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+  text-transform: none;
+}
+h1.hero {
+  font-size: calc(98 * var(--u));
+  font-weight: 360;
+  letter-spacing: -0.035em;
+  line-height: calc(90 * var(--u));
+  color: var(--ink);
+  white-space: nowrap;
+  text-shadow: 0 calc(2 * var(--u)) calc(30 * var(--u)) rgba(0, 0, 0, 0.45);
+}
+.play {
+  width: calc(50.5 * var(--u));
+  height: calc(50.5 * var(--u));
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 calc(6 * var(--u)) calc(18 * var(--u)) rgba(0, 0, 0, 0.35);
+}
+.play svg { width: calc(13 * var(--u)); height: calc(14 * var(--u)); }
+.tag {
+  font-size: calc(24 * var(--u));
+  font-weight: 470;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* ---------- glass panel ---------- */
+.panel {
+  width: calc(275 * var(--u));
+  height: calc(271 * var(--u));
+  border-radius: calc(28 * var(--u));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04));
+  border: calc(1 * var(--u)) solid rgba(255, 255, 255, 0.24);
+  -webkit-backdrop-filter: blur(calc(40 * var(--u))) saturate(112%);
+  backdrop-filter: blur(calc(40 * var(--u))) saturate(112%);
+  box-shadow:
+    inset calc(1 * var(--u)) calc(1 * var(--u)) 0 rgba(255, 255, 255, 0.16),
+    inset calc(-1 * var(--u)) calc(-1 * var(--u)) 0 rgba(255, 255, 255, 0.05),
+    0 calc(18 * var(--u)) calc(40 * var(--u)) rgba(0, 0, 0, 0.3);
+}
+.panel > * { position: absolute; }
+.p-title {
+  left: calc(29 * var(--u));
+  top: calc(44.7 * var(--u));
+  font-size: calc(24 * var(--u));
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.dot {
+  left: calc(172 * var(--u));
+  top: calc(53 * var(--u));
+  width: calc(10 * var(--u));
+  height: calc(10 * var(--u));
+  border-radius: 50%;
+  background: var(--accent);
+}
+.shield {
+  left: calc(177 * var(--u));
+  top: calc(46 * var(--u));
+  width: calc(73 * var(--u));
+  height: calc(73 * var(--u));
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 calc(26 * var(--u)) calc(10 * var(--u)) rgba(248, 181, 92, 0.18),
+    0 calc(6 * var(--u)) calc(16 * var(--u)) rgba(0, 0, 0, 0.25);
+}
+.shield svg { width: calc(34 * var(--u)); height: calc(34 * var(--u)); }
+.p-sub {
+  left: calc(29 * var(--u));
+  top: calc(94.35 * var(--u));
+  font-size: calc(18 * var(--u));
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: calc(20.4 * var(--u));
+  color: var(--muted2);
+}
+.scale {
+  left: calc(47 * var(--u));
+  top: calc(189 * var(--u));
+  width: calc(190 * var(--u));
+  display: flex;
+  justify-content: space-between;
+  font-size: calc(15 * var(--u));
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--muted2);
+}
+.track {
+  left: calc(46 * var(--u));
+  top: calc(221 * var(--u));
+  width: calc(190 * var(--u));
+  height: calc(8 * var(--u));
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+/* 0.394 of the 0-2 distance scale = 19.7% of the track */
+.track i { display: block; width: calc(37.4 * var(--u)); height: 100%; border-radius: 999px; background: var(--accent); transform-origin: left center; }
+
+/* ---------- stats row ---------- */
+.num {
+  font-size: calc(100 * var(--u));
+  font-weight: 200;
+  letter-spacing: 0em;
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.lbl {
+  font-size: calc(19 * var(--u));
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: calc(23.5 * var(--u));
+  color: var(--ink-soft);
+}
+.slash {
+  width: calc(23 * var(--u));
+  height: calc(75 * var(--u));
+  background: linear-gradient(
+    to top left,
+    transparent calc(50% - 0.85 * var(--u)),
+    rgba(255, 255, 255, 0.38) calc(50% - 0.85 * var(--u)),
+    rgba(255, 255, 255, 0.38) calc(50% + 0.85 * var(--u)),
+    transparent calc(50% + 0.85 * var(--u))
+  );
+}
+
+/* ---------- secondary pill ---------- */
+.meet {
+  width: calc(269 * var(--u));
+  height: calc(86 * var(--u));
+  border-radius: 999px;
+  display: block;
+  text-decoration: none;
+  background: rgba(10, 15, 24, 0.42);
+  border: calc(1 * var(--u)) solid rgba(255, 255, 255, 0.22);
+  -webkit-backdrop-filter: blur(calc(40 * var(--u)));
+  backdrop-filter: blur(calc(40 * var(--u)));
+  box-shadow:
+    0 0 0 calc(1.2 * var(--u)) rgba(255, 255, 255, 0.05),
+    inset calc(1 * var(--u)) calc(1 * var(--u)) 0 rgba(255, 255, 255, 0.14),
+    0 calc(8 * var(--u)) calc(22 * var(--u)) rgba(0, 0, 0, 0.3);
+}
+.meet > * { position: absolute; }
+.thumb {
+  left: calc(12 * var(--u));
+  top: calc(11 * var(--u));
+  width: calc(64 * var(--u));
+  height: calc(64 * var(--u));
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 calc(1 * var(--u)) rgba(255, 255, 255, 0.35);
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.meet b {
+  left: calc(89.8 * var(--u));
+  top: calc(34.55 * var(--u));
+  font-size: calc(17.5 * var(--u));
+  font-weight: 425;
+  letter-spacing: -0.0681em;
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.meet .knob {
+  left: calc(206 * var(--u));
+  top: calc(17 * var(--u));
+  width: calc(50 * var(--u));
+  height: calc(50 * var(--u));
+  background: var(--meet-knob);
+}
+
+/* ---------- burger (hidden until the frame turns portrait) ---------- */
+.burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: calc(6 * var(--u));
+  width: calc(56 * var(--u));
+  height: calc(56 * var(--u));
+  border-radius: 999px;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(10, 15, 24, 0.5);
+  border: calc(1 * var(--u)) solid rgba(255, 255, 255, 0.2);
+  -webkit-backdrop-filter: blur(calc(40 * var(--u)));
+  backdrop-filter: blur(calc(40 * var(--u)));
+  box-shadow:
+    0 0 0 calc(1.3 * var(--u)) rgba(255, 255, 255, 0.06),
+    0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, 0.35);
+}
+.burger i {
+  display: block;
+  width: calc(20 * var(--u));
+  height: calc(1.8 * var(--u));
+  border-radius: 999px;
+  background: var(--ink);
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.3, 1), opacity 0.3s;
+}
+.burger[aria-expanded="true"] i:first-child { transform: translateY(calc(3.9 * var(--u))) rotate(45deg); }
+.burger[aria-expanded="true"] i:last-child { transform: translateY(calc(-3.9 * var(--u))) rotate(-45deg); }
+.burger:focus-visible { outline: calc(2 * var(--u)) solid var(--accent); outline-offset: calc(3 * var(--u)); }
+.menu { display: contents; }
+
+/* ---------- hover / focus ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .cta, .meet { transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); }
+  .cta:hover, .meet:hover { transform: translateY(calc(-2 * var(--u))); }
+}
+.glyph-page a:focus-visible { outline: calc(2 * var(--u)) solid var(--accent); outline-offset: calc(3 * var(--u)); }
+
+/* ---------- entrance pre-states ----------
+   Added before first paint, removed once the timeline finishes, so the resting
+   frame is the authored CSS untouched. No JS or reduced motion => never added. */
+html.pre .brand, html.pre .nav, html.pre .cta, html.pre .burger,
+html.pre .eyebrow, html.pre .play, html.pre .tag,
+html.pre .panel, html.pre .lbl, html.pre .meet { opacity: 0; }
+html.pre h1.hero .sx, html.pre .num { clip-path: inset(100% 0 -14% 0); }
+html.pre .slash { scale: 1 0; }
+html.pre .track i { scale: 0 1; }
+html.pre .dot { scale: 0; }
+
+/* ============================================================================
+   TIER 2 - COMPACT: keyed to frame shape, not device width.
+   The wrappers stop being display:contents and become the layout.
+   ========================================================================== */
+@media (max-aspect-ratio: 87/80), (max-width: 899px), (max-height: 639px) {
+  :root { --u: min(100vw / 880, 100vh / 1220); --pad: 52; }
+  @supports (height: 100dvh) { :root { --u: min(100vw / 880, 100dvh / 1220); } }
+
+  .card { inset: 0; border-radius: 0; }
+  .bg { left: -2px; top: -2px; }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    padding: calc(var(--pad) * var(--u));
+  }
+  .row, .hero-blk, .stats, .stat, .tagrow { display: flex; }
+  .row { align-items: center; justify-content: space-between; width: 100%; }
+  .hero-blk { flex-direction: column; align-items: flex-start; width: 100%; margin: calc(30 * var(--u)) 0; }
+  .tagrow { align-items: center; gap: calc(16 * var(--u)); margin-top: calc(28 * var(--u)); }
+  .stats { align-items: flex-end; gap: calc(26 * var(--u)); flex-wrap: wrap; }
+  .stat { align-items: flex-end; gap: calc(16 * var(--u)); }
+  .l, .t, .c, .b, .r { position: relative; left: auto; right: auto; top: auto; bottom: auto; }
+  h1.hero { margin-top: calc(16 * var(--u)); }
+  .play { flex: none; }
+  .panel { align-self: flex-end; margin-top: calc(36 * var(--u)); }
+  .row:last-child { flex-wrap: wrap; row-gap: calc(24 * var(--u)); }
+  .meet { margin-left: auto; }
+  .nav { position: relative; left: auto; top: auto; transform: none; flex: none; }
+
+  /* compact landscape keeps copy and panel side by side */
+  @media (min-aspect-ratio: 1/1) {
+    :root { --u: min(100vw / 1240, 100vh / 820); --pad: 46; }
+    @supports (height: 100dvh) { :root { --u: min(100vw / 1240, 100dvh / 820); } }
+    @media (max-height: 520px) {
+      :root { --u: min(100vw / 900, 100vh / 560); --pad: 30; }
+      @supports (height: 100dvh) { :root { --u: min(100vw / 900, 100dvh / 560); } }
+    }
+    .hero-blk {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: calc(46 * var(--u));
+      align-items: end;
+      margin: calc(24 * var(--u)) 0;
+    }
+    .eyebrow { grid-column: 1; grid-row: 1; }
+    h1.hero { grid-column: 1; grid-row: 2; }
+    .tagrow { grid-column: 1; grid-row: 3; }
+    .panel { grid-column: 2; grid-row: 1 / span 3; align-self: center; margin-top: 0; }
+    .row:last-child { flex-wrap: nowrap; }
+  }
+
+  /* ---- TIER 3 - MOBILE ----
+     Two scales: --u drives composition and display type (width-tied, so a
+     headline can never outrun the frame); --t drives reading type and controls
+     and is floored, so labels stay legible and targets stay tappable. */
+  @media (max-width: 640px) and (max-aspect-ratio: 1/1) {
+    :root {
+      --u: min(100vw / 600, 100vh / 940);
+      --t: max(var(--u), min(0.85px, 100vh / 780));
+      --pad: 40;
+    }
+    @supports (height: 100dvh) {
+      :root { --u: min(100vw / 600, 100dvh / 940); --t: max(var(--u), min(0.85px, 100dvh / 780)); }
+    }
+    .sx { transform: none; }
+    .brand { height: auto; }
+    .mark { width: calc(36 * var(--t)); height: calc(36 * var(--t)); }
+    .brand b { font-size: calc(21 * var(--t)); margin-left: calc(8 * var(--t)); }
+    h1.hero { font-size: calc(66 * var(--u)); line-height: calc(64 * var(--u)); margin-top: calc(12 * var(--u)); }
+    .eyebrow { font-size: calc(16 * var(--t)); }
+    .hero-blk { margin: calc(24 * var(--u)) 0; }
+    .tagrow { gap: calc(14 * var(--t)); margin-top: calc(22 * var(--u)); }
+    .tag { font-size: calc(19 * var(--t)); line-height: calc(25 * var(--t)); white-space: normal; }
+    .play { width: calc(48 * var(--t)); height: calc(48 * var(--t)); }
+    .play svg { width: calc(12 * var(--t)); height: calc(13 * var(--t)); }
+
+    .panel { width: 100%; align-self: stretch; height: calc(212 * var(--t)); margin-top: calc(24 * var(--u)); }
+    .p-title { left: calc(30 * var(--t)); top: calc(30 * var(--t)); font-size: calc(24 * var(--t)); }
+    .dot { left: calc(172 * var(--t)); top: calc(40 * var(--t)); width: calc(10 * var(--t)); height: calc(10 * var(--t)); }
+    .shield { left: auto; right: calc(26 * var(--t)); top: calc(22 * var(--t)); width: calc(64 * var(--t)); height: calc(64 * var(--t)); }
+    .shield svg { width: calc(30 * var(--t)); height: calc(30 * var(--t)); }
+    .p-sub { left: calc(31 * var(--t)); top: calc(80 * var(--t)); font-size: calc(17 * var(--t)); line-height: calc(21 * var(--t)); }
+    .scale { left: calc(31 * var(--t)); top: calc(150 * var(--t)); width: calc(100% - 62 * var(--t)); font-size: calc(14 * var(--t)); }
+    .track { left: calc(31 * var(--t)); top: calc(178 * var(--t)); width: calc(100% - 62 * var(--t)); height: calc(8 * var(--t)); }
+    .track i { width: 19.7%; }
+
+    .stats { gap: calc(18 * var(--u)); align-items: center; flex-wrap: nowrap; }
+    .stat { flex-direction: column; align-items: flex-start; gap: calc(6 * var(--t)); }
+    .num { font-size: calc(76 * var(--u)); }
+    .lbl { font-size: calc(15 * var(--t)); line-height: calc(19 * var(--t)); }
+    .slash { height: calc(92 * var(--t)); width: calc(29 * var(--t)); align-self: center; }
+    .meet { width: 100%; height: calc(72 * var(--t)); }
+    .thumb { left: calc(9 * var(--t)); top: calc(5 * var(--t)); width: calc(62 * var(--t)); height: calc(62 * var(--t)); }
+    .meet b { left: calc(84 * var(--t)); top: calc(28 * var(--t)); font-size: calc(17 * var(--t)); }
+    .meet .knob { left: auto; right: calc(11 * var(--t)); top: calc(11 * var(--t)); width: calc(50 * var(--t)); height: calc(50 * var(--t)); }
+  }
+}
+
+/* ---------- nav collapse: keyed only to frame shape ----------
+   Portrait collapses; landscape never does. Desktop needs >= 87:80, so the
+   burger is structurally unreachable there. */
+@media (max-aspect-ratio: 1/1) {
+  .burger { display: flex; }
+  .menu {
+    display: block;
+    position: absolute;
+    z-index: 9;
+    top: calc((var(--pad) + 68) * var(--u));
+    right: calc(var(--pad) * var(--u));
+    width: calc(304 * var(--u));
+    padding: calc(16 * var(--u));
+    border-radius: calc(30 * var(--u));
+    background: rgba(10, 15, 24, 0.72);
+    border: calc(1 * var(--u)) solid rgba(255, 255, 255, 0.2);
+    -webkit-backdrop-filter: blur(calc(40 * var(--u)));
+    backdrop-filter: blur(calc(40 * var(--u)));
+    box-shadow:
+      0 0 0 calc(1.3 * var(--u)) rgba(255, 255, 255, 0.06),
+      0 calc(16 * var(--u)) calc(34 * var(--u)) rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(calc(-10 * var(--u))) scale(0.97);
+    transform-origin: top right;
+    transition:
+      opacity 0.26s cubic-bezier(0.2, 0.7, 0.3, 1),
+      transform 0.26s cubic-bezier(0.2, 0.7, 0.3, 1),
+      visibility 0.26s;
+  }
+  .menu[data-open] { opacity: 1; visibility: visible; transform: none; }
+  .menu .nav {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    width: 100%;
+    height: auto;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: calc(16 * var(--u));
+    row-gap: calc(16 * var(--u));
+    padding: calc(8 * var(--u)) calc(10 * var(--u));
+    border: 0;
+    background: none;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .menu .nav > * { position: relative; left: auto; top: auto; }
+  .menu .nav a { font-size: calc(19 * var(--u)); }
+  .menu .n-home { width: calc(21 * var(--u)); height: calc(22 * var(--u)); }
+  .menu .n-grid { width: calc(21 * var(--u)); height: calc(21 * var(--u)); }
+  .menu .n-div { grid-column: 1 / -1; width: 100%; height: calc(1.2 * var(--u)); margin: calc(2 * var(--u)) 0; }
+  .menu .cta { position: relative; left: auto; top: auto; width: 100%; height: calc(64 * var(--u)); margin-top: calc(14 * var(--u)); }
+  .menu .cta span { left: calc(28 * var(--u)); top: calc(23 * var(--u)); font-size: calc(19 * var(--u)); }
+  .menu .cta .knob { left: auto; right: calc(9 * var(--u)); top: calc(7 * var(--u)); width: calc(50 * var(--u)); height: calc(50 * var(--u)); }
+
+  @media (max-width: 640px) {
+    .burger { width: calc(56 * var(--t)); height: calc(56 * var(--t)); gap: calc(6 * var(--t)); }
+    .burger i { width: calc(20 * var(--t)); height: calc(1.8 * var(--t)); }
+    .burger[aria-expanded="true"] i:first-child { transform: translateY(calc(3.9 * var(--t))) rotate(45deg); }
+    .burger[aria-expanded="true"] i:last-child { transform: translateY(calc(-3.9 * var(--t))) rotate(-45deg); }
+    .menu {
+      width: auto;
+      left: calc(var(--pad) * var(--u));
+      right: calc(var(--pad) * var(--u));
+      top: calc(var(--pad) * var(--u) + 68 * var(--t));
+      padding: calc(14 * var(--t));
+      border-radius: calc(28 * var(--t));
+    }
+    .menu .nav { column-gap: calc(15 * var(--t)); row-gap: calc(15 * var(--t)); padding: calc(6 * var(--t)) calc(8 * var(--t)); }
+    .menu .nav a { font-size: calc(18 * var(--t)); }
+    .menu .n-home { width: calc(21 * var(--t)); height: calc(22 * var(--t)); }
+    .menu .n-grid { width: calc(21 * var(--t)); height: calc(21 * var(--t)); }
+    .menu .cta { height: calc(60 * var(--t)); margin-top: calc(12 * var(--t)); }
+    .menu .cta span { left: calc(26 * var(--t)); top: calc(21 * var(--t)); font-size: calc(18 * var(--t)); }
+    .menu .cta .knob { right: calc(7 * var(--t)); top: calc(6 * var(--t)); width: calc(48 * var(--t)); height: calc(48 * var(--t)); }
+  }
+}

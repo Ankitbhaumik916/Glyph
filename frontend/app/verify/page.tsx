@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import ResultPanel from "@/components/ResultPanel";
 import SignatureDropzone from "@/components/SignatureDropzone";
-import SiteNav from "@/components/SiteNav";
+import AppHeader from "@/components/AppHeader";
 import {
   ApiError,
   API_URL,
@@ -132,8 +132,8 @@ export default function VerifyPage() {
 
   return (
     <>
-      <SiteNav />
-      <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-28 sm:px-6">
+      <AppHeader current="verify" />
+      <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-8 sm:px-6">
         <header className="mb-8 border-b border-white/10 pb-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
