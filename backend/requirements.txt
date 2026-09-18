@@ -1,0 +1,17 @@
+# --- Signature verification backend dependencies ---
+# Install into a venv (see README.md). CPU-only torch is plenty for inference:
+#   pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+python-multipart>=0.0.9          # required by FastAPI for multipart/form-data uploads
+
+torch>=2.2,<3.0
+
+# NOTE: opencv-python <4.10 is compiled against NumPy 1.x and fails to import
+# under NumPy 2 with "_ARRAY_API not found". Keep these two in step.
+numpy>=2.0,<3.0
+opencv-python>=4.10,<5.0
+
+scikit-image>=0.24,<1.0
+pillow>=10.3,<12.0

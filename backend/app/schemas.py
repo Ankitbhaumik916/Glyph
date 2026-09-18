@@ -1,0 +1,95 @@
+"""Response models. These define the contract the Next.js frontend codes against."""
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class VerifyResponse(BaseModel):
+    distance: float = Field(
+        ..., description="Euclidean distance between the two L2-normalized embeddings."
+    )
+    threshold: float = Field(..., description="Decision threshold stored in the bundle.")
+    max_distance: float = Field(
+        2.0,
+        description=(
+            "Largest distance two L2-normalized embeddings can have. Useful for "
+            "drawing the score on a fixed scale."
+        ),
+    )
+    is_genuine: bool = Field(..., description="True when distance <= threshold.")
+    is_borderline: bool = Field(
+        False,
+        description=(
+            "True when the distance is within borderline_band of the threshold. The "
+            "verdict is then not reproducible across re-drawn crops - treat it as "
+            "inconclusive rather than as a decision."
+        ),
+    )
+    borderline_band: float = Field(0.05, description="Half-width of the inconclusive band.")
+    variants: int = Field(
+        1, description="Crop margins averaged per image (1 when no crop was supplied)."
+    )
+    variant_spread: float = Field(
+        0.0,
+        description=(
+            "Max minus min distance across the per-variant comparisons. Larger means "
+            "this pair is more sensitive to exactly where the crop falls."
+        ),
+    )
+    confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Margin from the decision boundary, scaled to [0,1]. Not a calibrated "
+            "probability."
+        ),
+    )
+    preprocessed_ref_base64: str = Field(
+        ..., description="Base64 PNG of the reference image as the model saw it (no data: prefix)."
+    )
+    preprocessed_test_base64: str = Field(
+        ..., description="Base64 PNG of the test image as the model saw it (no data: prefix)."
+    )
+
+
+class PreviewResponse(BaseModel):
+    preprocessed_base64: str = Field(
+        ..., description="Base64 PNG of the image as the model would see it (no data: prefix)."
+    )
+    ink_fraction: float = Field(..., description="Fraction of the output that is ink.")
+    signature_detected: bool = Field(
+        ..., description="False when /api/verify would reject this image as having no signature."
+    )
+
+
+class ErrorDetail(BaseModel):
+    code: str
+    message: str
+    field: str | None = None
+    hint: str | None = None
+
+
+class ErrorResponse(BaseModel):
+    error: ErrorDetail
+
+
+class HealthResponse(BaseModel):
+    # `model_loaded` / `model_info` collide with pydantic's protected `model_`
+    # namespace; we keep the field names and disable the guard.
+    model_config = ConfigDict(protected_namespaces=())
+
+    status: str
+    model_loaded: bool
+    threshold: float | None = None
+    bundle_threshold: float | None = None
+    threshold_source: str | None = Field(
+        None, description='"bundle" or "calibrated" (THRESHOLD_OVERRIDE is set).'
+    )
+    borderline_band: float | None = None
+    img_size: int | None = None
+    embed_dim: int | None = None
+    model_info: dict[str, Any] | None = None
+    error: str | None = None

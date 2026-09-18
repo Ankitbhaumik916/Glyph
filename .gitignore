@@ -1,0 +1,33 @@
+# --- Python ---
+backend/.venv/
+__pycache__/
+*.py[cod]
+
+# --- Node / Next.js ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+*.tsbuildinfo
+.vercel/
+
+# --- Local env ---
+.env
+.env.local
+.env*.local
+
+# --- Training datasets (fetch separately; not ours to redistribute) ---
+CEDAR/
+CEDAR.zip
+BHSig260-Hindi/
+BHSig260-Hindi.zip
+*.zip
+
+# --- Signature photos and calibration output ---
+# Real signatures are personal data: keep them out of the repo by default.
+data/
+calibration/
+
+# --- OS noise ---
+Thumbs.db
+.DS_Store

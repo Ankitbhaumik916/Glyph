@@ -1,0 +1,13 @@
+# Datasets and local artefacts never belong in the image
+CEDAR*
+BHSig260*
+*.zip
+data/
+calibration/
+
+frontend/
+backend/.venv/
+**/__pycache__/
+**/*.py[cod]
+.git/
+.github/
