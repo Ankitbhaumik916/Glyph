@@ -355,8 +355,11 @@ git remote add space https://huggingface.co/spaces/<your-user>/glyph
 git push space main          # username = your HF name, password = the token
 ```
 
-The first build takes roughly 5-10 minutes. The Space serves on port 7860;
-check `https://<user>-glyph.hf.space/api/health`.
+The first build takes a while — installing torch, OpenCV and scikit-image took
+~18 minutes locally, and the finished image is about 2 GB. Rebuilds reuse the
+cached dependency layer and take under a minute unless `requirements.txt`
+changes. The Space serves on port 7860; check
+`https://<user>-glyph.hf.space/api/health`.
 
 Prefer the web UI? Create the Space manually with **SDK = Docker**, push the
 same way, and set these under **Settings → Variables and secrets**:
@@ -498,6 +501,11 @@ images involved in the most wrong calls (at threshold 0.416):
 One photo far above the rest usually means a bad capture (poor crop, glare, weak
 contrast) rather than a bad signature, and it drags down every comparison it
 takes part in. Check it in `what_the_model_saw.png` and re-shoot it.
+
+Calibrate with the same `TTA_VARIANTS` the server runs. The averaged embedding
+shifts slightly with the number of crop margins, so a threshold fitted at 7
+variants is a little off for a server running 5 — on one test pair the distance
+moved from 0.680 to 0.714. Pass `--variants 5` to match a free-tier Space.
 
 A few cautions worth keeping in mind:
 
