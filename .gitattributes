@@ -1,3 +1,4 @@
 # Model weights exceed Hugging Face's 10 MB limit for plain files.
 *.pt filter=lfs diff=lfs merge=lfs -text
+# Hugging Face requires binary media to be LFS-tracked regardless of size.
 *.mp4 filter=lfs diff=lfs merge=lfs -text
