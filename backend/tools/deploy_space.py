@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -101,8 +102,15 @@ def main() -> None:
                             {"key": key, "value": value})
         print(f"  {'set' if status in (200, 201) else f'FAILED ({status}) {body}'}: {key}={value}")
 
+    # Variable changes need a restart to take effect.
+    status, _ = call("POST", f"/spaces/{args.space}/restart", token)
+    print(f"  {'restart requested' if status in (200, 201, 204) else f'restart failed ({status})'}")
+
+    # Space subdomains lowercase the id and replace anything that is not a
+    # letter or digit with a dash: AnkBhau/Signet_bck -> ankbhau-signet-bck.
+    slug = re.sub(r"[^a-z0-9]+", "-", f"{owner}-{name}".lower()).strip("-")
     print(f"\nSpace:     https://huggingface.co/spaces/{args.space}")
-    print(f"Endpoint:  https://{owner.lower()}-{name.lower()}.hf.space")
+    print(f"Endpoint:  https://{slug}.hf.space")
     print("\nPush the code (run from the repo root):")
     print(f"  git remote add space https://huggingface.co/spaces/{args.space}")
     print("  git push space main          # asks for your HF username + token as the password")
