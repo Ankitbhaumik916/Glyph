@@ -10,8 +10,8 @@
    glass) and sampled from the clip, while every measurement, offset and --sx
    tracking value is kept exactly as specified.
 
-   The plate uses object-fit:contain so the clip is never zoomed or cropped;
-   the margin it leaves is painted in the clip's own corner tone.
+   The plate uses object-fit:cover so the clip fills the frame; whatever does
+   not fit the viewport's shape is cropped.
    ========================================================================== */
 
 :root {
@@ -49,18 +49,29 @@
 .card { position: absolute; inset: 0; isolation: isolate; }
 
 /* ---------- background plate ----------
-   `contain`, not `cover`: the whole frame is shown, never zoomed or cropped.
-   Any leftover margin is --frame, which is the clip's own corner tone, so the
-   plate reads as one surface rather than a letterboxed video. */
+   `cover`: the clip fills the frame edge to edge. The trade is that whatever
+   does not fit the viewport's shape is cropped - unavoidable, since the clip is
+   1455:1088 and screens rarely are. The 2px bleed plus scale(1.002) hide the
+   subpixel seam that rounding can leave at the edges. */
 .bg {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  left: -2px;
+  top: -2px;
+  width: calc(100vw + 4px);
+  height: calc(100vh + 4px);
+  object-fit: cover;
   object-position: 50% 50%;
   z-index: 0;
   background: var(--frame);
+  transform: scale(1.002);
+}
+@supports (height: 100dvh) {
+  .bg { height: calc(100dvh + 4px); }
+}
+/* Narrow frames crop hard from the sides; centred, that would throw away the
+   floral arch and leave flat navy. Bias the crop towards it. */
+@media (max-aspect-ratio: 3/4) {
+  .bg { object-position: 72% 50%; }
 }
 /* Seats light type on the plate without washing the florals out. The clip is
    dark top-left and bright on the right, so the wash is strongest where the
@@ -431,7 +442,7 @@ html.pre .dot { scale: 0; }
   @supports (height: 100dvh) { :root { --u: min(100vw / 880, 100dvh / 1220); } }
 
   .card { inset: 0; border-radius: 0; }
-  .bg { inset: 0; }
+  .bg { left: -2px; top: -2px; }
 
   .stack {
     display: flex;
