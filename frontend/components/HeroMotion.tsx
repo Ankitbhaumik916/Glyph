@@ -86,8 +86,7 @@ export default function HeroMotion() {
       lift(q(".eyebrow"), 300, ".8em", 520);
       rise(heads[0], 380, 980);
       rise(heads[1], 470, 980);
-      settle(q(".play"), 720, 640, 0.88, ".3em");
-      lift(q(".tag"), 770, ".7em", 560);
+      lift(q(".tag"), 720, ".7em", 560);
       settle(q(".panel"), 800, 880, 0.982, "1.4em");
       play(q(".shield"), [{ scale: ".86" }, { scale: "1" }], 700, 1020, EXPO);
       play(q(".dot"), [{ scale: "0" }, { scale: "1" }], 520, 1080, EXPO);

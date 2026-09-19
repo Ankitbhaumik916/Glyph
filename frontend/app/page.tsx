@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import HeroActions from "@/components/HeroActions";
 import HeroMotion from "@/components/HeroMotion";
 import "./landing.css";
 
@@ -112,14 +113,9 @@ export default function Landing() {
             </h1>
 
             <div className="tagrow">
-              <span className="play l c" style={{ "--x": 66, "--y": 34 } as React.CSSProperties}>
-                <svg viewBox="0 0 13 14" aria-hidden="true">
-                  <path d="M1.4 1.3 11.6 7 1.4 12.7z" fill="#0b1526" />
-                </svg>
-              </span>
               <span
                 className="tag l c sx"
-                style={{ "--x": 131, "--y": 48.7, "--sx": 0.8973 } as React.CSSProperties}
+                style={{ "--x": 66, "--y": 48.7, "--sx": 0.8973 } as React.CSSProperties}
               >
                 See exactly what the model saw.
               </span>
@@ -191,16 +187,7 @@ export default function Landing() {
               </div>
             </div>
 
-            <Link className="meet l b r" style={{ "--x": 59, "--y": 66 } as React.CSSProperties} href="/verify">
-              <span className="thumb">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img alt="" style={{ objectPosition: "60% 50%" }} src="/media/hero-poster.jpg" />
-              </span>
-              <b>See a live result</b>
-              <span className="knob">
-                <Chevron />
-              </span>
-            </Link>
+            <HeroActions />
           </div>
         </div>
       </div>

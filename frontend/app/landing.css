@@ -617,3 +617,89 @@ html.pre .dot { scale: 0; }
     .menu .cta .knob { right: calc(7 * var(--t)); top: calc(6 * var(--t)); width: calc(48 * var(--t)); height: calc(48 * var(--t)); }
   }
 }
+
+/* ---------- live-result overlay ----------
+   The landing is a fixed, non-scrolling frame, so the panel scrolls internally
+   rather than the page. */
+.demo-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(24 * var(--u));
+  background: rgba(2, 6, 16, 0.72);
+  -webkit-backdrop-filter: blur(calc(6 * var(--u)));
+  backdrop-filter: blur(calc(6 * var(--u)));
+  animation: demo-fade 240ms cubic-bezier(0.2, 0.75, 0.28, 1) both;
+}
+@keyframes demo-fade { from { opacity: 0 } to { opacity: 1 } }
+
+.demo-panel {
+  width: min(calc(560 * var(--u)), 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: calc(26 * var(--u));
+  padding: calc(26 * var(--u));
+  background: linear-gradient(160deg, rgba(20, 26, 44, 0.96), rgba(8, 12, 26, 0.97));
+  border: calc(1 * var(--u)) solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 calc(30 * var(--u)) calc(70 * var(--u)) rgba(0, 0, 0, 0.55);
+  animation: demo-rise 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes demo-rise { from { opacity: 0; transform: translateY(calc(14 * var(--u))) scale(0.985) } to { opacity: 1; transform: none } }
+
+.demo-head { display: flex; align-items: flex-start; justify-content: space-between; gap: calc(16 * var(--u)); }
+.demo-eyebrow { font-size: calc(12 * var(--u)); font-weight: 570; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+.demo-title { margin-top: calc(6 * var(--u)); font-size: calc(24 * var(--u)); font-weight: 480; letter-spacing: -0.02em; color: var(--ink); }
+.demo-close {
+  flex: none; width: calc(34 * var(--u)); height: calc(34 * var(--u));
+  border-radius: 50%; cursor: pointer; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.08); border: calc(1 * var(--u)) solid rgba(255, 255, 255, 0.16); color: var(--ink-soft);
+}
+.demo-close:hover { background: rgba(255, 255, 255, 0.14); }
+.demo-close svg { width: calc(16 * var(--u)); height: calc(16 * var(--u)); }
+
+.demo-status { margin-top: calc(20 * var(--u)); font-size: calc(15 * var(--u)); line-height: 1.5; color: var(--muted2); }
+.demo-error { color: #ffb4b4; }
+.demo-retry {
+  margin-top: calc(12 * var(--u)); cursor: pointer; border-radius: 999px;
+  padding: calc(8 * var(--u)) calc(18 * var(--u)); font-size: calc(14 * var(--u)); font-weight: 500;
+  background: rgba(255, 255, 255, 0.1); border: calc(1 * var(--u)) solid rgba(255, 255, 255, 0.2); color: var(--ink);
+}
+
+.demo-verdict {
+  margin-top: calc(20 * var(--u)); padding: calc(14 * var(--u)) calc(18 * var(--u));
+  border-radius: calc(16 * var(--u)); border-width: calc(1 * var(--u)); border-style: solid;
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: calc(8 * var(--u));
+  font-size: calc(20 * var(--u)); font-weight: 600; letter-spacing: 0.02em;
+}
+.demo-distance { font-size: calc(13 * var(--u)); font-weight: 400; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; opacity: 0.85; }
+.demo-copy, .demo-note { margin-top: calc(16 * var(--u)); font-size: calc(14 * var(--u)); line-height: 1.55; color: var(--muted2); }
+.demo-note { color: var(--muted); }
+
+.demo-images { margin-top: calc(18 * var(--u)); display: flex; gap: calc(18 * var(--u)); justify-content: center; flex-wrap: wrap; }
+.demo-images figcaption { text-align: center; font-size: calc(11 * var(--u)); letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: calc(8 * var(--u)); }
+.demo-images img { width: calc(155 * var(--u)); height: calc(155 * var(--u)); border-radius: calc(10 * var(--u)); border: calc(1 * var(--u)) solid rgba(255, 255, 255, 0.14); background: #000; }
+
+.demo-cta {
+  margin-top: calc(24 * var(--u)); display: flex; align-items: center; justify-content: center; gap: calc(10 * var(--u));
+  height: calc(52 * var(--u)); border-radius: 999px; text-decoration: none;
+  background: var(--cta); color: var(--cta-ink); font-size: calc(16 * var(--u)); font-weight: 500;
+}
+.demo-cta svg { width: calc(16 * var(--u)); height: calc(16 * var(--u)); }
+.demo-cta:hover { background: #fff; }
+
+/* .meet is a <button> now, so it needs the element defaults reset. */
+button.meet { cursor: pointer; text-align: left; font: inherit; color: inherit; padding: 0; }
+
+@media (max-width: 640px) {
+  .demo-panel { padding: calc(20 * var(--t)); border-radius: calc(22 * var(--t)); }
+  .demo-title { font-size: calc(20 * var(--t)); }
+  .demo-eyebrow { font-size: calc(11 * var(--t)); }
+  .demo-verdict { font-size: calc(17 * var(--t)); }
+  .demo-copy, .demo-note, .demo-status { font-size: calc(13.5 * var(--t)); }
+  .demo-images img { width: calc(130 * var(--t)); height: calc(130 * var(--t)); }
+  .demo-cta { height: calc(48 * var(--t)); font-size: calc(15 * var(--t)); }
+  .demo-close { width: calc(32 * var(--t)); height: calc(32 * var(--t)); }
+}
