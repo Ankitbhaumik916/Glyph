@@ -361,6 +361,22 @@ unreachable"*, terminal 1 is not running (or is on a different port than
 
 ## 4. Deploying (Vercel + Hugging Face)
 
+### Current deployment
+
+| Piece | Where |
+| --- | --- |
+| Backend | Hugging Face Space `AnkBhau/Signet_bck` → `https://ankbhau-signet-bck.hf.space` |
+| Frontend | Vercel, root directory `frontend`, `NEXT_PUBLIC_API_URL` set to the Space URL |
+| Reviews | Private dataset `AnkBhau/glyph-reviews` |
+| Space variables | `CORS_ORIGIN_REGEX`, `TTA_VARIANTS=5`, `REVIEWS_DATASET` |
+| Space secrets | `HF_TOKEN`, `ADMIN_KEY` |
+
+The Space reuses the old SigNet Space deliberately: Hugging Face now requires
+PRO to *create* a Docker Space on free hardware, while Spaces created before
+that change keep working. So push to that existing Space rather than making a
+new one — and pass `--no-create` to `tools/deploy_space.py`.
+
+
 The frontend goes to Vercel, the backend to a Hugging Face Space running the
 `Dockerfile` in this repo. They are wired together by two settings: the
 frontend's `NEXT_PUBLIC_API_URL` and the backend's CORS origins.
