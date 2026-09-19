@@ -20,6 +20,11 @@ if (!process.env.NEXT_PUBLIC_API_URL) {
 
 const nextConfig = {
   reactStrictMode: true,
+  // A production build writes over whatever is in the output directory. Running
+  // one while `next dev` is up replaces the dev server's chunks, and it then
+  // fails with "Cannot find module './331.js'" and serves an unstyled page.
+  // Build into a separate directory instead:  NEXT_DIST_DIR=.next-build next build
+  distDir: process.env.NEXT_DIST_DIR || ".next",
 };
 
 export default nextConfig;
