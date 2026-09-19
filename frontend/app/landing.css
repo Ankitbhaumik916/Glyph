@@ -5,25 +5,30 @@
    comp, so the whole composition scales as one piece and never reflows.
 
    Palette note: the source spec was measured over a pale studio video and used
-   near-black type on a near-white frame. Glyph's hero clip is a dark storm, so
-   the *tokens* are inverted here (light type, dark-tinted glass) while every
-   measurement, offset and --sx tracking value is kept exactly as specified.
+   near-black type on a near-white frame. Glyph's hero clip is a midnight
+   floral arch, so the *tokens* are inverted here (light type, dark-tinted
+   glass) and sampled from the clip, while every measurement, offset and --sx
+   tracking value is kept exactly as specified.
+
+   The plate uses object-fit:contain so the clip is never zoomed or cropped;
+   the margin it leaves is painted in the clip's own corner tone.
    ========================================================================== */
 
 :root {
   --u: min(100vw / 1280, 100vh / 960);
 
-  --ink: #f2f6fc;          /* primary type, over dark video */
-  --ink-soft: #d8e2ef;
-  --muted: #9dabc1;
-  --muted2: #b3c0d2;
-  --frame: #05070b;        /* backing behind the video plate */
-  --cta: #f4e8d4;          /* warm near-white, picked from the light shaft */
-  --cta-ink: #10182a;
-  --cta-knob: #1b2433;
-  --meet-knob: #c2823a;
-  --accent: #f8b55c;
-  --track: rgba(255, 255, 255, 0.16);
+  /* Sampled from the hero clip: midnight navy ground, lilac florals. */
+  --ink: #eef2fb;          /* primary type, over the dark plate */
+  --ink-soft: #cfd8ec;
+  --muted: #93a0bd;
+  --muted2: #aab5cf;
+  --frame: #02091c;        /* the clip's own corner tone, so the plate has no visible edge */
+  --cta: #eef1fb;
+  --cta-ink: #0a1024;
+  --cta-knob: #1a2340;
+  --meet-knob: #7b62b8;
+  --accent: #c0ade6;       /* brightest floral tone */
+  --track: rgba(255, 255, 255, 0.14);
 }
 @supports (height: 100dvh) {
   :root { --u: min(100vw / 1280, 100dvh / 960); }
@@ -43,29 +48,29 @@
 
 .card { position: absolute; inset: 0; isolation: isolate; }
 
-/* ---------- background plate ---------- */
+/* ---------- background plate ----------
+   `contain`, not `cover`: the whole frame is shown, never zoomed or cropped.
+   Any leftover margin is --frame, which is the clip's own corner tone, so the
+   plate reads as one surface rather than a letterboxed video. */
 .bg {
   position: absolute;
-  left: -2px;
-  top: -2px;
-  width: calc(100vw + 4px);
-  height: calc(100vh + 4px);
-  object-fit: cover;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   object-position: 50% 50%;
   z-index: 0;
-  filter: brightness(1.006) saturate(0.965);
-  transform: scale(1.002); /* with the 2px bleed, hides subpixel seams */
+  background: var(--frame);
 }
-@supports (height: 100dvh) {
-  .bg { height: calc(100dvh + 4px); }
-}
-/* Seats light type on a dark, busy plate without washing the video out. */
+/* Seats light type on the plate without washing the florals out. The clip is
+   dark top-left and bright on the right, so the wash is strongest where the
+   headline sits and lightest over the arch. */
 .tint {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(4, 7, 13, 0.55) 0%, rgba(4, 7, 13, 0.18) 38%, rgba(4, 7, 13, 0.68) 100%),
-    rgba(6, 10, 18, 0.14);
+    linear-gradient(100deg, rgba(2, 9, 28, 0.62) 0%, rgba(2, 9, 28, 0.38) 42%, rgba(2, 9, 28, 0.12) 70%),
+    linear-gradient(180deg, rgba(2, 9, 28, 0.35) 0%, rgba(2, 9, 28, 0) 30%, rgba(2, 9, 28, 0.5) 100%);
   z-index: 1;
   pointer-events: none;
 }
@@ -426,7 +431,7 @@ html.pre .dot { scale: 0; }
   @supports (height: 100dvh) { :root { --u: min(100vw / 880, 100dvh / 1220); } }
 
   .card { inset: 0; border-radius: 0; }
-  .bg { left: -2px; top: -2px; }
+  .bg { inset: 0; }
 
   .stack {
     display: flex;
