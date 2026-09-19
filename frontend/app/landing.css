@@ -89,7 +89,7 @@
   color: inherit;
   height: calc(39 * var(--u));
 }
-.mark { width: calc(39 * var(--u)); height: calc(39 * var(--u)); display: block; flex: none; }
+.mark { width: calc(39 * var(--u)); height: calc(39 * var(--u)); display: block; flex: none; object-fit: contain; }
 .brand b {
   font-size: calc(22 * var(--u));
   font-weight: 520;
@@ -259,7 +259,7 @@ h1.hero {
     0 0 calc(26 * var(--u)) calc(10 * var(--u)) rgba(248, 181, 92, 0.18),
     0 calc(6 * var(--u)) calc(16 * var(--u)) rgba(0, 0, 0, 0.25);
 }
-.shield svg { width: calc(34 * var(--u)); height: calc(34 * var(--u)); }
+.shield img { width: calc(40 * var(--u)); height: calc(40 * var(--u)); object-fit: contain; display: block; }
 .p-sub {
   left: calc(29 * var(--u));
   top: calc(94.35 * var(--u));
@@ -502,7 +502,7 @@ html.pre .dot { scale: 0; }
     .p-title { left: calc(30 * var(--t)); top: calc(30 * var(--t)); font-size: calc(24 * var(--t)); }
     .dot { left: calc(172 * var(--t)); top: calc(40 * var(--t)); width: calc(10 * var(--t)); height: calc(10 * var(--t)); }
     .shield { left: auto; right: calc(26 * var(--t)); top: calc(22 * var(--t)); width: calc(64 * var(--t)); height: calc(64 * var(--t)); }
-    .shield svg { width: calc(30 * var(--t)); height: calc(30 * var(--t)); }
+    .shield img { width: calc(36 * var(--t)); height: calc(36 * var(--t)); }
     .p-sub { left: calc(31 * var(--t)); top: calc(80 * var(--t)); font-size: calc(17 * var(--t)); line-height: calc(21 * var(--t)); }
     .scale { left: calc(31 * var(--t)); top: calc(150 * var(--t)); width: calc(100% - 62 * var(--t)); font-size: calc(14 * var(--t)); }
     .track { left: calc(31 * var(--t)); top: calc(178 * var(--t)); width: calc(100% - 62 * var(--t)); height: calc(8 * var(--t)); }

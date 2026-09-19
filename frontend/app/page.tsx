@@ -39,17 +39,9 @@ export default function Landing() {
           {/* ---------------- header ---------------- */}
           <div className="row">
             <Link className="brand l t" style={{ "--x": 68, "--y": 47 } as React.CSSProperties} href="/">
-              {/* Signature stroke, drawn in one gesture - the product's own mark. */}
-              <svg className="mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                <circle cx="20" cy="20" r="18.4" stroke="#f2f6fc" strokeWidth="1.1" opacity=".55" />
-                <path
-                  d="M7.5 26.5c4.2-1.2 6.6-12.4 8.6-11.6 2 .8-1.4 15.4 1.6 15.1 3-.3 4.2-12.6 6.6-11.8 2.3.8.2 9.3 2.8 9 1.9-.2 3.6-2.4 5.4-4.6"
-                  stroke="#f8b55c"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              {/* Light variant: the brand sits on the dark video plate here. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="mark" src="/brand/mark-light.png" alt="" aria-hidden="true" />
               <b className="sx" style={{ "--sx": 0.894 } as React.CSSProperties}>
                 Glyph
               </b>
@@ -139,15 +131,9 @@ export default function Landing() {
               </span>
               <span className="dot" />
               <span className="shield">
-                <svg viewBox="0 0 34 34" fill="none" aria-hidden="true">
-                  <path
-                    d="M4 23c3.6-1 5.6-10.6 7.4-9.9 1.7.7-1.2 13.1 1.4 12.9 2.5-.3 3.6-10.8 5.6-10.1 2 .7.2 7.9 2.4 7.7 1.6-.2 3-2 4.6-3.9"
-                    stroke="#101c33"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                {/* Dark variant: this badge is a near-white disc. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/mark-dark.png" alt="" aria-hidden="true" />
               </span>
               <p className="p-sub sx" style={{ "--sx": 0.8899 } as React.CSSProperties}>
                 Genuine at or

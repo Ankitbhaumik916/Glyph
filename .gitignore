@@ -23,6 +23,10 @@ BHSig260-Hindi/
 BHSig260-Hindi.zip
 *.zip
 
+# --- Raw media working files (derived assets live in frontend/public) ---
+sea-storm/
+ascii-animation.mp4
+
 # --- Signature photos and calibration output ---
 # Real signatures are personal data: keep them out of the repo by default.
 data/
