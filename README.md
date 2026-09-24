@@ -489,6 +489,64 @@ inconclusive. Do not read "87% confidence" as "87% likely to be genuine"; a
 properly calibrated probability would require a held-out score distribution
 fitted for that purpose.
 
+## Supporting visual analysis
+
+Each result carries six classical-CV similarity scores in [0,1] - letter
+formation, line quality, stroke direction, size & proportion, alignment &
+slant, proportion & spacing - shown under the heading **"Supporting visual
+analysis (not used in the verdict)"**.
+
+They are explanatory, not evidentiary:
+
+- `backend/app/forensic_features.py` is a pure function of two images. It is
+  called at `model_service.py` *after* the verdict dict is complete, and its
+  output is attached under its own key.
+- Nothing reads it. `tests/test_verdict_isolation.py` asserts the verdict is
+  byte-identical whether the analysis runs, is disabled, or raises - for both a
+  high-similarity and a low-similarity pair.
+- The mean is shown at a quarter the size of the confidence figure and labelled
+  as separate. It is never fused with it.
+- Scores are only computed when a crop box was drawn on both images. Without
+  one the analysis would be measuring paper, shadows and fingers.
+
+### How features were chosen
+
+Every candidate was measured against a simple bar: **does a change of writer
+move it more than lighting, resolution, JPEG quality and photo angle do?**
+
+| Feature | Writer signal | Capture noise |
+| --- | --- | --- |
+| letter_formation | +0.074 | 0.032 |
+| line_quality | +0.163 | 0.161 |
+| stroke_direction | +0.101 | 0.014 |
+| size_proportion | +0.117 | 0.079 |
+| alignment_slant | +0.117 | 0.034 |
+| proportion_spacing | +0.017 | 0.001 |
+
+Three things came out of that measurement:
+
+- **Terminal strokes was dropped.** Even with directions fitted over the whole
+  tail and angles taken relative to the baseline, a change of writer moved it
+  0.026 while a 10 degree photo rotation moved it 0.192. The code is kept,
+  unused, for a future with scanner or live-capture input.
+- **Angles are measured relative to each signature's own baseline**, not
+  absolutely. Measured absolutely, `alignment_slant` was largely reporting how
+  the paper sat under the camera; fixing it cut its capture noise from 0.099 to
+  0.034 and doubled its writer signal.
+- **Every image is contrast-flattened and rescaled to a common ink height**
+  before measurement, because stroke width in pixels drives skeleton shape, ink
+  density and component counts alike.
+
+Two caveats worth repeating to anyone reading the panel: the separation is real
+but weak (same-writer means ~0.78-0.83 against ~0.63-0.72 for different people
+on CEDAR spot checks), and the scale constants are uncalibrated - they set the
+scale of a score, not its meaning. Do not derive thresholds from them.
+
+Deliberately not implemented: pen pressure, pen lift, writing speed and tremor.
+A static photo carries no temporal signal and ink density is confounded by pen,
+paper and exposure, so these would be decorative "PASS" scores with nothing
+behind them.
+
 ## Calibrating the threshold on your own photos
 
 The bundle's threshold (0.3938) was fitted on scanned research datasets. Your

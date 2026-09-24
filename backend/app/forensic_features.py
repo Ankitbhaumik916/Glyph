@@ -63,10 +63,14 @@ WORK_MAX_DIM = 1200
 # 0.000 for every non-identical signature - a feature failing 100% of the time
 # regardless of the true match.
 SHAPE_D0 = 6.4       # cv2.matchShapes I2 (best separating of I1/I2/I3)
-CURVE_D0 = 0.59      # Wasserstein between self-normalized curvature samples
+CURVE_D0 = 3.2       # Wasserstein between turning-angle samples, in degrees
 TERMINAL_D0 = 43.0   # degrees, between terminal-angle distributions
 ORIENT_BINS = 16
 MIN_COMPONENT_AREA_FRAC = 5e-5
+# Every image is rescaled so its ink is this tall before anything is measured.
+# Without it, stroke width in pixels - and therefore skeleton shape, ink
+# density and component counts - depends on how big the photo happened to be.
+NORM_INK_HEIGHT = 320
 
 FEATURE_ORDER = (
     "letter_formation",
@@ -74,9 +78,17 @@ FEATURE_ORDER = (
     "stroke_direction",
     "size_proportion",
     "alignment_slant",
-    "terminal_strokes",
     "proportion_spacing",
 )
+
+# Terminal strokes was specified and implemented, then removed after
+# measurement: with angles taken relative to the baseline and directions fitted
+# over the whole tail, a change of writer moved it by 0.026 while a 10 degree
+# photo rotation moved it by 0.192. Skeleton endpoints are simply not stable
+# under resampling - whether a tail survives thresholding decides whether it is
+# counted at all. Shipping it would mean showing a number that mostly reports
+# how the photo was taken. The implementation is kept below, unused, so the
+# decision can be revisited with better input (a flatbed scan, or live capture).
 
 
 @dataclass(frozen=True)
@@ -87,6 +99,7 @@ class SignatureShape:
     skeleton: np.ndarray      # bool, 1px centreline
     contours: list            # external contours of the mask
     components: list          # (x, y, w, h, area) left-to-right
+    axis_deg: float           # principal axis of the ink, for rotation-relative angles
 
 
 def _clip01(value: float) -> float:
@@ -121,9 +134,29 @@ def prepare(bgr: np.ndarray) -> SignatureShape | None:
     if scale < 1.0:
         gray = cv2.resize(gray, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
+    # Flatten exposure before thresholding. Measured: without this, a +25%
+    # brightness change moved line_quality by 0.34 - far more than a change of
+    # writer does - because Otsu shifted and every stroke came out thicker.
+    gray = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8)).apply(gray)
+
     # Otsu on a blurred copy: ink is dark, so invert to make ink the foreground.
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     _, mask = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+    # Rescale so the ink itself is a fixed height. Stroke width, ink density
+    # and component separation all depend on pixels-per-stroke, so two photos
+    # at different resolutions must be brought to a common scale first.
+    ys0, xs0 = np.where(mask > 0)
+    if ys0.size == 0:
+        return None
+    ink_h = float(ys0.max() - ys0.min() + 1)
+    if ink_h > 0 and abs(ink_h - NORM_INK_HEIGHT) / NORM_INK_HEIGHT > 0.05:
+        k = NORM_INK_HEIGHT / ink_h
+        interp = cv2.INTER_AREA if k < 1 else cv2.INTER_CUBIC
+        gray = cv2.resize(gray, (max(8, int(gray.shape[1] * k)), max(8, int(gray.shape[0] * k))),
+                          interpolation=interp)
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        _, mask = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     # Drop specks; they dominate component counts and endpoint statistics.
     n, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
@@ -150,7 +183,21 @@ def prepare(bgr: np.ndarray) -> SignatureShape | None:
     )
     if not contours:
         return None
-    return SignatureShape(mask=mask, skeleton=skeleton, contours=list(contours), components=components)
+
+    ys, xs = np.where(mask > 0)
+    axis_deg = 0.0
+    if xs.size >= 20:
+        centred = np.column_stack([xs - xs.mean(), ys - ys.mean()]).astype(np.float64)
+        _, _, vt = np.linalg.svd(centred, full_matrices=False)
+        axis_deg = float(np.degrees(np.arctan2(vt[0][1], vt[0][0])))
+
+    return SignatureShape(
+        mask=mask,
+        skeleton=skeleton,
+        contours=list(contours),
+        components=components,
+        axis_deg=axis_deg,
+    )
 
 
 # --------------------------------------------------------------------------
@@ -203,16 +250,33 @@ def _walk_paths(skel: np.ndarray, max_paths: int = 60) -> list[np.ndarray]:
     return paths
 
 
+RESAMPLE_POINTS = 32
+
+
 def _curvatures(paths: list[np.ndarray]) -> np.ndarray:
-    """Magnitude of the second derivative along each traced stroke."""
+    """Turning angle along each stroke, resampled to a fixed number of points.
+
+    Resampling by arc length is what makes this comparable between images: the
+    raw second derivative is per-pixel, so the same stroke photographed at
+    twice the resolution produced a different curvature distribution. Measured
+    before this change, halving the resolution moved line_quality by ~0.4.
+    """
     values: list[float] = []
     for path in paths:
-        if len(path) < 5:
+        if len(path) < 8:
             continue
-        smooth = cv2.GaussianBlur(path.astype(np.float32), (1, 5), 0).reshape(-1, 2)
-        d1 = np.diff(smooth, axis=0)
-        d2 = np.diff(d1, axis=0)
-        values.extend(np.linalg.norm(d2, axis=1).tolist())
+        pts = path.astype(np.float64)
+        steps = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))]
+        if steps[-1] <= 0:
+            continue
+        target = np.linspace(0.0, steps[-1], RESAMPLE_POINTS)
+        resampled = np.column_stack([np.interp(target, steps, pts[:, i]) for i in (0, 1)])
+        d1 = np.diff(resampled, axis=0)
+        norms = np.linalg.norm(d1, axis=1, keepdims=True)
+        unit = d1 / np.where(norms == 0, 1, norms)
+        # Angle between consecutive unit tangents: a pure shape quantity.
+        dots = np.clip(np.sum(unit[1:] * unit[:-1], axis=1), -1.0, 1.0)
+        values.extend(np.degrees(np.arccos(dots)).tolist())
     return np.asarray(values, dtype=np.float64)
 
 
@@ -220,11 +284,10 @@ def _histogram_distance(a: np.ndarray, b: np.ndarray) -> float | None:
     """Wasserstein distance between two samples, each self-normalized first."""
     if a.size < 10 or b.size < 10:
         return None
-    # Self-relative: divide by each signature's own median, so the comparison is
-    # about the *shape* of the distribution, not the absolute pixel scale.
-    a_scale = np.median(a) or 1.0
-    b_scale = np.median(b) or 1.0
-    return float(wasserstein_distance(a / a_scale, b / b_scale))
+    # No self-normalization: the inputs are turning angles in degrees, already
+    # independent of image scale. Dividing by each signature's own median made
+    # the measure jump whenever thresholding changed the median slightly.
+    return float(wasserstein_distance(a, b))
 
 
 # --------------------------------------------------------------------------
@@ -285,42 +348,70 @@ def _size_proportion(ref: SignatureShape, test: SignatureShape) -> float | None:
     if a is None or b is None:
         return None
     aspect = abs(a[0] - b[0]) / max(a[0], b[0])
+    # Both images were rescaled to a common ink height in prepare(), so this
+    # density comparison is between like and like; before that normalization a
+    # half-resolution photo alone shifted this score by 0.129.
     density = abs(a[1] - b[1]) / max(a[1], b[1], 1e-6)
     return _clip01(1.0 - 0.5 * (aspect + density))
 
 
-def _major_axis_angle(shape: SignatureShape) -> float | None:
-    """Angle of the ink cloud's principal axis, in degrees."""
-    ys, xs = np.where(shape.mask > 0)
-    if xs.size < 20:
+def _slant_relative_to_baseline(shape: SignatureShape) -> float | None:
+    """Dominant stroke angle measured against the signature's own baseline.
+
+    The earlier version compared the absolute angle of each ink cloud, which is
+    how the PAPER sat under the camera as much as how the writer slants their
+    letters: measured, a 10 degree photo rotation moved the score by 0.099
+    while a change of writer moved it by 0.056. Subtracting each signature's
+    own principal axis makes the measurement invariant to that rotation while
+    still capturing internal slant.
+    """
+    gx = cv2.Sobel(shape.mask, cv2.CV_32F, 1, 0, ksize=3)
+    gy = cv2.Sobel(shape.mask, cv2.CV_32F, 0, 1, ksize=3)
+    magnitude = np.hypot(gx, gy)
+    if magnitude.sum() <= 0:
         return None
-    coords = np.column_stack([xs - xs.mean(), ys - ys.mean()]).astype(np.float64)
-    _, _, vt = np.linalg.svd(coords, full_matrices=False)
-    vx, vy = vt[0]
-    return float(np.degrees(np.arctan2(vy, vx)))
+    # Stroke direction is perpendicular to the intensity gradient.
+    stroke = (np.degrees(np.arctan2(gy, gx)) + 90.0) % 180.0
+    relative = (stroke - shape.axis_deg) % 180.0
+    hist, _ = np.histogram(relative, bins=36, range=(0.0, 180.0), weights=magnitude)
+    if hist.sum() <= 0:
+        return None
+    # Circular mean over a 180-degree (undirected) space.
+    centres = np.radians((np.arange(36) + 0.5) * 5.0 * 2.0)
+    weights = hist / hist.sum()
+    angle = np.arctan2(np.sum(weights * np.sin(centres)), np.sum(weights * np.cos(centres)))
+    return float((np.degrees(angle) / 2.0) % 180.0)
 
 
 def _alignment_slant(ref: SignatureShape, test: SignatureShape) -> float | None:
-    a, b = _major_axis_angle(ref), _major_axis_angle(test)
+    a, b = _slant_relative_to_baseline(ref), _slant_relative_to_baseline(test)
     if a is None or b is None:
         return None
     diff = abs(a - b) % 180.0
-    diff = min(diff, 180.0 - diff)  # axis is undirected
+    diff = min(diff, 180.0 - diff)  # slant is undirected
     return _clip01(1.0 - diff / 90.0)
 
 
-def _terminal_angles(shape: SignatureShape, tail: int = 10) -> np.ndarray:
+def _terminal_angles(shape: SignatureShape, tail: int = 20) -> np.ndarray:
     """Direction of the last ~`tail` pixels of each stroke, in degrees."""
     angles: list[float] = []
     for path in _walk_paths(shape.skeleton):
         if len(path) < tail:
             continue
-        end = path[-1]
-        back = path[-min(tail, len(path))]
-        dy, dx = end[0] - back[0], end[1] - back[1]
+        # Least-squares direction over the whole tail, not the difference of
+        # two pixels: a single endpoint moves with every thresholding change.
+        segment = path[-tail:]
+        centred = segment - segment.mean(axis=0)
+        _, _, vt = np.linalg.svd(centred, full_matrices=False)
+        dy, dx = vt[0]
+        # Orient along the direction of travel.
+        if (segment[-1] - segment[0]) @ vt[0] < 0:
+            dy, dx = -dy, -dx
         if dx == 0 and dy == 0:
             continue
-        angles.append(float(np.degrees(np.arctan2(dy, dx)) % 360.0))
+        # Relative to the signature's own baseline, for the same reason as
+        # slant: absolute terminal angles rotate with the photograph.
+        angles.append(float((np.degrees(np.arctan2(dy, dx)) - shape.axis_deg) % 360.0))
     return np.asarray(angles, dtype=np.float64)
 
 
@@ -334,7 +425,7 @@ def _terminal_strokes(ref: SignatureShape, test: SignatureShape) -> float | None
 
 def _spacing_vector(shape: SignatureShape, length: int = 8) -> np.ndarray | None:
     """Component widths and inter-component gaps, left to right, normalized."""
-    comps = shape.components
+    comps = _merge_touching(shape.components)
     if len(comps) < 2:
         return None
     total = float(comps[-1][0] + comps[-1][2] - comps[0][0])
@@ -355,6 +446,29 @@ def _spacing_vector(shape: SignatureShape, length: int = 8) -> np.ndarray | None
     return None if norm == 0 else resampled / norm
 
 
+def _merge_touching(components: list, gap_frac: float = 0.012) -> list:
+    """Merge components separated by less than a small fraction of the width.
+
+    Whether a ligature survives thresholding decides if two letters are one
+    component or two, and that flipped the spacing vector between otherwise
+    identical photos. Merging near-touching pieces makes the segmentation
+    depend on the writing rather than on the exposure.
+    """
+    if not components:
+        return []
+    total = max(1.0, components[-1][0] + components[-1][2] - components[0][0])
+    gap_limit = gap_frac * total
+    merged = [list(components[0])]
+    for x, y, w, h, area in components[1:]:
+        px, py, pw, ph, parea = merged[-1]
+        if x - (px + pw) < gap_limit:
+            nx, ny = min(px, x), min(py, y)
+            merged[-1] = [nx, ny, max(px + pw, x + w) - nx, max(py + ph, y + h) - ny, parea + area]
+        else:
+            merged.append([x, y, w, h, area])
+    return [tuple(m) for m in merged]
+
+
 def _proportion_spacing(ref: SignatureShape, test: SignatureShape) -> float | None:
     a, b = _spacing_vector(ref), _spacing_vector(test)
     if a is None or b is None:
@@ -368,8 +482,8 @@ _FEATURES = {
     "stroke_direction": _stroke_direction,
     "size_proportion": _size_proportion,
     "alignment_slant": _alignment_slant,
-    "terminal_strokes": _terminal_strokes,
     "proportion_spacing": _proportion_spacing,
+    # "terminal_strokes": _terminal_strokes,  # see FEATURE_ORDER note
 }
 
 

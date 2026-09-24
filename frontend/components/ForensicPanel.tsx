@@ -19,11 +19,14 @@ const LABELS: Record<string, string> = {
   stroke_direction: "Stroke direction",
   size_proportion: "Size & proportion",
   alignment_slant: "Alignment & slant",
-  terminal_strokes: "Terminal strokes",
   proportion_spacing: "Proportion & spacing",
 };
 
-const ORDER = Object.keys(LABELS);
+/** Driven by the response, not a hard-coded list: a feature retired on the
+ *  backend then disappears here instead of rendering as "not measurable". */
+function orderFor(forensic: ForensicAnalysis): string[] {
+  return Object.keys(LABELS).filter((key) => key in forensic.scores);
+}
 
 export default function ForensicPanel({ forensic }: { forensic: ForensicAnalysis }) {
   return (
@@ -47,12 +50,14 @@ export default function ForensicPanel({ forensic }: { forensic: ForensicAnalysis
       <p className="mt-2 text-xs leading-relaxed text-slate-400">
         Classical image measurements comparing the two signatures, shown to explain what
         they have in common and where they differ. They are computed independently of the
-        model and do not affect the distance, the threshold or the verdict. Individually
-        they separate writers only weakly, so read them as description, not proof.
+        model and do not affect the distance, the threshold or the verdict. Each one was
+        kept only if a change of writer moves it more than lighting, resolution or photo
+        angle do - but they still separate writers weakly, so read them as description,
+        not proof.
       </p>
 
       <dl className="mt-5 space-y-2.5">
-        {ORDER.map((key) => {
+        {orderFor(forensic).map((key) => {
           const value = forensic.scores[key];
           return (
             <div key={key} className="flex items-center gap-3">
@@ -83,7 +88,9 @@ export default function ForensicPanel({ forensic }: { forensic: ForensicAnalysis
         {forensic.measured} of {forensic.total} features measurable for this pair. Scores
         run 0 to 1, higher meaning more alike. Pen pressure, pen lift, writing speed and
         tremor are deliberately absent: a still photo carries no timing signal, and ink
-        density is confounded by pen, paper and lighting.
+        density is confounded by pen, paper and lighting. Terminal strokes was built and
+        then dropped, because a 10&deg; photo rotation moved it further than a change of
+        writer did.
       </p>
     </section>
   );
