@@ -14,6 +14,11 @@ numpy>=2.0,<3.0
 opencv-python>=4.10,<5.0
 
 scikit-image>=0.24,<1.0
+# Imported directly by app/forensic_features.py (wasserstein_distance). It
+# arrives transitively with scikit-image today, but an import we make ourselves
+# gets declared ourselves - otherwise a future scikit-image release that drops
+# or repins it breaks the Space build with no warning.
+scipy>=1.11,<2.0
 pillow>=10.3,<12.0
 
 # Writes reviews to a private dataset repo (see app/reviews.py).
