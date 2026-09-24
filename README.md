@@ -537,6 +537,27 @@ Three things came out of that measurement:
   before measurement, because stroke width in pixels drives skeleton shape, ink
   density and component counts alike.
 
+### Guarding against silent collapse
+
+`tests/test_feature_variance.py` runs the whole battery over a fixed set of
+synthetic writers (generated in the test, so it needs no dataset) and asserts
+per feature that it is usually measurable, has not collapsed to a constant, is
+not pinned at either end, and uses a sane part of the scale.
+
+Both bugs that actually happened here were invisible to ordinary correctness
+tests - valid floats, working API, untouched verdict - so the suite was checked
+by reintroducing them:
+
+| Reintroduced bug | Caught by |
+| --- | --- |
+| Scale constant mis-set, squashing every pair near zero | scale-sanity check (median 0.059) |
+| Merge threshold collapsing every signature to one component | measurability check (0% of pairs) |
+
+The scale check exists because variance alone was not enough: with the
+`1/(1 + d/d0)` mapping a mis-set constant no longer pins scores to exactly
+zero, it squashes them into a narrow band just above it, which has enough
+variance to pass a collapse alarm while rendering as a permanently empty bar.
+
 Two caveats worth repeating to anyone reading the panel: the separation is real
 but weak (same-writer means ~0.78-0.83 against ~0.63-0.72 for different people
 on CEDAR spot checks), and the scale constants are uncalibrated - they set the
