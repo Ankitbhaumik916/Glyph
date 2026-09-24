@@ -14,7 +14,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Glyph — Signature Verification",
+  title: "Glyph Signature Verification",
   description:
     "Compare a signature against a known-genuine reference, and see exactly what the "
     + "model saw before it decided. Research prototype.",

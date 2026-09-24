@@ -24,6 +24,8 @@ export interface VerifyResult {
   /** Base64 PNG, no data: prefix. */
   preprocessed_ref_base64: string;
   preprocessed_test_base64: string;
+  /** null when no crop box was drawn, or when the feature is switched off. */
+  forensic?: ForensicAnalysis | null;
 }
 
 /** Crop rectangle in 0-1 units of the (EXIF-oriented) image. */
@@ -40,6 +42,14 @@ export interface PreviewResult {
   ink_fraction: number;
   /** False when /api/verify would reject this image as having no signature. */
   signature_detected: boolean;
+}
+
+/** Supporting visual analysis. Explanatory only - never an input to the verdict. */
+export interface ForensicAnalysis {
+  scores: Record<string, number | null>;
+  mean_score: number | null;
+  measured: number;
+  total: number;
 }
 
 export interface ApiErrorDetail {

@@ -1,5 +1,6 @@
 "use client";
 
+import ForensicPanel from "@/components/ForensicPanel";
 import ReviewForm from "@/components/ReviewForm";
 import type { VerifyResult } from "@/lib/api";
 
@@ -190,6 +191,8 @@ export default function ResultPanel({ result, onReset }: Props) {
           <PreprocessedImage label="Test" base64={preprocessed_test_base64} />
         </div>
       </div>
+
+      {result.forensic && <ForensicPanel forensic={result.forensic} />}
 
       <ReviewForm result={result} />
 

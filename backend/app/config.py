@@ -61,6 +61,10 @@ CORS_ORIGINS = [
 # listed one by one. Set e.g. https://glyph-.*\.vercel\.app to allow them.
 CORS_ORIGIN_REGEX = os.getenv("CORS_ORIGIN_REGEX", "").strip() or None
 
+# Supporting visual analysis: seven classical-CV similarity scores shown beside
+# the verdict. Descriptive only - see app/forensic_features.py. Set 0 to omit.
+FORENSIC_ENABLED = os.getenv("FORENSIC_ENABLED", "1").strip() not in ("0", "false", "False")
+
 # --- Reviews -----------------------------------------------------------------
 # Testers leave a review after each comparison. They are written to a PRIVATE
 # Hugging Face dataset repo, because the Space's own disk does not survive a

@@ -37,3 +37,6 @@ calibration/
 # --- OS noise ---
 Thumbs.db
 .DS_Store
+
+# pytest
+.pytest_cache/

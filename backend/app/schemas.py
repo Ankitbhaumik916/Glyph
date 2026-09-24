@@ -53,6 +53,13 @@ class VerifyResponse(BaseModel):
     preprocessed_test_base64: str = Field(
         ..., description="Base64 PNG of the test image as the model saw it (no data: prefix)."
     )
+    forensic: ForensicAnalysis | None = Field(
+        None,
+        description=(
+            "Supporting visual analysis, shown beside the verdict and never used "
+            "in it. None when no crop box was drawn, or when the feature is off."
+        ),
+    )
 
 
 class PreviewResponse(BaseModel):
@@ -95,6 +102,26 @@ class ReviewRecord(ReviewIn):
 class ReviewList(BaseModel):
     reviews: list[ReviewRecord]
     count: int
+
+
+class ForensicAnalysis(BaseModel):
+    """Supporting visual analysis. Explanatory only - see forensic_features.py.
+
+    Nothing in here is an input to distance, is_genuine, is_borderline or
+    confidence. A score of None means the feature was not measurable for this
+    pair, which is reported as such rather than as a low score.
+    """
+
+    scores: dict[str, float | None]
+    mean_score: float | None = Field(
+        None,
+        description=(
+            "Mean of the measurable scores, for display only. Deliberately NOT "
+            "fused with the neural confidence."
+        ),
+    )
+    measured: int
+    total: int
 
 
 class ErrorDetail(BaseModel):

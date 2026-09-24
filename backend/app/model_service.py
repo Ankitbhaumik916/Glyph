@@ -399,7 +399,11 @@ class SignatureVerifier:
         distance, spread = self.embed_pair(ref_variants, test_variants)
         is_genuine = distance <= self.threshold
 
-        return {
+        # The verdict is assembled here, complete, from the neural distance
+        # alone. Nothing below this point may alter it - the supporting
+        # analysis is attached afterwards as an extra key and is not read by
+        # anything that decides anything.
+        verdict = {
             "distance": round(distance, 6),
             "threshold": round(self.threshold, 6),
             "max_distance": config.MAX_DISTANCE,
@@ -414,6 +418,41 @@ class SignatureVerifier:
             "preprocessed_ref_base64": encode_png_base64(ref_pre),
             "preprocessed_test_base64": encode_png_base64(test_pre),
         }
+
+        verdict["forensic"] = self._supporting_analysis(
+            ref_img, test_img, ref_crop, test_crop
+        )
+        return verdict
+
+    def _supporting_analysis(
+        self,
+        ref_img: np.ndarray,
+        test_img: np.ndarray,
+        ref_crop: CropBox | None,
+        test_crop: CropBox | None,
+    ) -> dict[str, Any] | None:
+        """Classical-CV similarity scores, for display only.
+
+        Returns None - and the UI omits the section - when either image has no
+        user-drawn box. Without one the analysis would be measuring paper,
+        shadows and fingers rather than handwriting, and confident-looking
+        numbers computed from noise are worse than no numbers.
+
+        Failures are swallowed on purpose: this is an explanatory extra, and a
+        bug in it must never take down a verification.
+        """
+        if not config.FORENSIC_ENABLED or ref_crop is None or test_crop is None:
+            return None
+        try:
+            from . import forensic_features
+
+            return forensic_features.compare(
+                apply_crop(ref_img, ref_crop, "reference"),
+                apply_crop(test_img, test_crop, "test"),
+            )
+        except Exception:  # noqa: BLE001 - never let this break a verdict
+            log.exception("supporting visual analysis failed; continuing without it")
+            return None
 
 
 verifier = SignatureVerifier()
