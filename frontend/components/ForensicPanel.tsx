@@ -14,7 +14,6 @@ import type { ForensicAnalysis } from "@/lib/api";
  *   always fails is indistinguishable from a real mismatch otherwise.
  */
 const LABELS: Record<string, string> = {
-  letter_formation: "Letter formation",
   line_quality: "Line quality",
   stroke_direction: "Stroke direction",
   size_proportion: "Size & proportion",
@@ -88,9 +87,10 @@ export default function ForensicPanel({ forensic }: { forensic: ForensicAnalysis
         {forensic.measured} of {forensic.total} features measurable for this pair. Scores
         run 0 to 1, higher meaning more alike. Pen pressure, pen lift, writing speed and
         tremor are deliberately absent: a still photo carries no timing signal, and ink
-        density is confounded by pen, paper and lighting. Terminal strokes was built and
-        then dropped, because a 10&deg; photo rotation moved it further than a change of
-        writer did.
+        density is confounded by pen, paper and lighting. Terminal strokes and letter
+        formation were both built and then dropped - the first moved further under a
+        10&deg; photo rotation than under a change of writer, the second barely
+        responded to a change of writer at all.
       </p>
     </section>
   );

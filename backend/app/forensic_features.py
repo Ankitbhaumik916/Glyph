@@ -1,8 +1,9 @@
 """Classical-CV similarity scores between two signature images.
 
 WHAT THIS IS
-    Seven descriptive scores in [0,1], 1 = similar, 0 = dissimilar. They exist
-    to *explain* a comparison to a human, not to decide it.
+    Five descriptive scores in [0,1], 1 = similar, 0 = dissimilar. They exist
+    to *explain* a comparison to a human, not to decide it. Two further
+    features were implemented, measured and retired; see FEATURE_ORDER.
 
 WHAT THIS IS NOT
     This module is a pure function of (reference_bgr, test_bgr). It is imported
@@ -30,6 +31,21 @@ DELIBERATELY NOT IMPLEMENTED
     Pen pressure, pen lift, speed/rhythm and tremor. A static photo carries no
     temporal signal, and ink density is confounded by pen, paper and exposure.
     They are omitted rather than reported as a passing score.
+
+TREAT SMALL-SAMPLE READS AS PROVISIONAL
+    Three times now, a feature here has been judged on too little data and the
+    judgement reversed once it was run through the full battery:
+      - letter_formation looked fine at 2.3:1 on a handful of pairs, and was
+        1.12:1 over 105 pairs - it is now retired;
+      - line_quality looked broken at ~1:1 from a single pair, and is 1.49:1
+        measured properly - it was kept;
+      - alignment_slant and proportion_spacing looked like the two weakest
+        features, and are now among the strongest. Neither signal ever changed:
+        one was measuring page angle rather than slant, the other was being
+        wrecked by a merge threshold.
+    So a single-perturbation or few-pair result about any of these features is
+    provisional until it has been run through the perturbation battery over the
+    full pair set. Do not add, drop or re-tune a feature on a spot check.
 
 ON THE NUMBERS
     The normalization constants below are uncalibrated: they set the scale of
@@ -73,7 +89,6 @@ MIN_COMPONENT_AREA_FRAC = 5e-5
 NORM_INK_HEIGHT = 320
 
 FEATURE_ORDER = (
-    "letter_formation",
     "line_quality",
     "stroke_direction",
     "size_proportion",
@@ -81,6 +96,13 @@ FEATURE_ORDER = (
     "proportion_spacing",
 )
 
+# Letter formation was retired the same way, after the wider study: over 60
+# same-writer and 45 different-writer pairs its writer signal was 0.041 against
+# 0.037 of capture noise - a ratio of 1.12, where every kept feature is above
+# 1.4. Unlike the others its weakness is signal, not noise, so no normalization
+# rescues it: Hu-moment contour matching simply does not separate these writers.
+# The earlier read of 2.3 came from too few cross-writer pairs.
+#
 # Terminal strokes was specified and implemented, then removed after
 # measurement: with angles taken relative to the baseline and directions fitted
 # over the whole tail, a change of writer moved it by 0.026 while a 10 degree
@@ -93,7 +115,7 @@ FEATURE_ORDER = (
 
 @dataclass(frozen=True)
 class SignatureShape:
-    """Everything the seven features need, derived once per image."""
+    """Everything the features need, derived once per image."""
 
     mask: np.ndarray          # uint8 0/255, ink = 255
     skeleton: np.ndarray      # bool, 1px centreline
@@ -291,7 +313,7 @@ def _histogram_distance(a: np.ndarray, b: np.ndarray) -> float | None:
 
 
 # --------------------------------------------------------------------------
-# the seven features
+# the features
 # --------------------------------------------------------------------------
 def _letter_formation(ref: SignatureShape, test: SignatureShape) -> float | None:
     """Hu-moment shape agreement between the two contour sets."""
@@ -342,14 +364,20 @@ def _size_proportion(ref: SignatureShape, test: SignatureShape) -> float | None:
         h = float(ys.max() - ys.min() + 1)
         if w <= 0 or h <= 0:
             return None
-        return w / h, float(xs.size) / (w * h)
+        # Density from SKELETON length, not ink pixels. Ink area counts stroke
+        # thickness, which Otsu inflates under defocus: a 3px blur moved this
+        # score by 0.176, the largest single perturbation effect measured
+        # anywhere in the battery. Skeleton length measures how much line was
+        # drawn inside the box, which thickening leaves alone.
+        stroke_length = float(np.count_nonzero(shape.skeleton))
+        return w / h, stroke_length / (w * h)
 
     a, b = metrics(ref), metrics(test)
     if a is None or b is None:
         return None
     aspect = abs(a[0] - b[0]) / max(a[0], b[0])
     # Both images were rescaled to a common ink height in prepare(), so this
-    # density comparison is between like and like; before that normalization a
+    # comparison is between like and like; before that normalization a
     # half-resolution photo alone shifted this score by 0.129.
     density = abs(a[1] - b[1]) / max(a[1], b[1], 1e-6)
     return _clip01(1.0 - 0.5 * (aspect + density))
@@ -477,18 +505,20 @@ def _proportion_spacing(ref: SignatureShape, test: SignatureShape) -> float | No
 
 
 _FEATURES = {
-    "letter_formation": _letter_formation,
     "line_quality": _line_quality,
     "stroke_direction": _stroke_direction,
     "size_proportion": _size_proportion,
     "alignment_slant": _alignment_slant,
     "proportion_spacing": _proportion_spacing,
-    # "terminal_strokes": _terminal_strokes,  # see FEATURE_ORDER note
+    # Retired, implementations kept - see the FEATURE_ORDER note:
+    # "letter_formation": _letter_formation,
+    # "terminal_strokes": _terminal_strokes,
 }
 
 
 def compare(reference_bgr: np.ndarray, test_bgr: np.ndarray) -> dict[str, Any] | None:
-    """Seven similarity scores in [0,1]. Pure: inputs in, numbers out.
+    """Similarity scores in [0,1], one per FEATURE_ORDER entry. Pure:
+    inputs in, numbers out.
 
     A feature returns None when the image genuinely does not support it (too
     few strokes to trace, one connected component and therefore no spacing).

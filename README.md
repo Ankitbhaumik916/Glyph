@@ -491,9 +491,9 @@ fitted for that purpose.
 
 ## Supporting visual analysis
 
-Each result carries six classical-CV similarity scores in [0,1] - letter
-formation, line quality, stroke direction, size & proportion, alignment &
-slant, proportion & spacing - shown under the heading **"Supporting visual
+Each result carries five classical-CV similarity scores in [0,1] - line
+quality, stroke direction, size & proportion, alignment & slant, proportion &
+spacing - shown under the heading **"Supporting visual
 analysis (not used in the verdict)"**.
 
 They are explanatory, not evidentiary:
@@ -514,21 +514,44 @@ They are explanatory, not evidentiary:
 Every candidate was measured against a simple bar: **does a change of writer
 move it more than lighting, resolution, JPEG quality and photo angle do?**
 
-| Feature | Writer signal | Capture noise |
-| --- | --- | --- |
-| letter_formation | +0.074 | 0.032 |
-| line_quality | +0.163 | 0.161 |
-| stroke_direction | +0.101 | 0.014 |
-| size_proportion | +0.117 | 0.079 |
-| alignment_slant | +0.117 | 0.034 |
-| proportion_spacing | +0.017 | 0.001 |
+Measured over 60 same-writer and 45 different-writer pairs, with each noise
+figure averaged across 10 pairs for each of 16 perturbation types (brightness,
+contrast, three JPEG levels, two blur levels, three rescales, three rotations,
+sensor noise):
 
-Three things came out of that measurement:
+| Feature | Writer signal | Capture noise | Ratio |
+| --- | --- | --- | --- |
+| proportion_spacing | +0.168 | 0.000 | 402 |
+| stroke_direction | +0.115 | 0.005 | 25 |
+| alignment_slant | +0.250 | 0.011 | 22 |
+| size_proportion | +0.282 | 0.019 | 14.5 |
+| line_quality | +0.102 | 0.069 | 1.5 |
 
-- **Terminal strokes was dropped.** Even with directions fitted over the whole
-  tail and angles taken relative to the baseline, a change of writer moved it
-  0.026 while a 10 degree photo rotation moved it 0.192. The code is kept,
-  unused, for a future with scanner or live-capture input.
+> **Small-sample reads on these features are provisional.** Three separate
+> judgements here were reversed once run over the full pair set:
+> `letter_formation` looked fine at 2.3:1 on a handful of pairs and was 1.12:1
+> over 105; `line_quality` looked broken at ~1:1 from a single pair and is
+> 1.49:1 measured properly; `alignment_slant` and `proportion_spacing` looked
+> like the weakest two and are now among the strongest, purely because they had
+> been measured badly. Do not add, drop or re-tune a feature on a spot check -
+> run the battery.
+
+Four things came out of that measurement:
+
+- **Terminal strokes and letter formation were dropped.** Terminal strokes
+  moved 0.026 under a change of writer against 0.192 under a 10 degree
+  rotation. Letter formation is the opposite failure - its capture noise is low
+  (0.037) but its writer signal is lower still (0.041, a ratio of 1.12), so no
+  normalization rescues it: Hu-moment contour matching just does not separate
+  these writers. Both implementations are kept in the file, unused and
+  labelled, rather than deleted - so nobody re-adds them later under time
+  pressure and reintroduces the same failure.
+
+- **Ink density is measured from skeleton length, not ink pixels.** Defocus
+  thickens strokes after thresholding, and a 3px blur moved size_proportion by
+  0.176 - the largest single perturbation effect anywhere in the battery.
+  Skeleton length measures how much line was drawn, which thickening leaves
+  alone: that one change took the feature from 4.7:1 to 14.5:1.
 - **Angles are measured relative to each signature's own baseline**, not
   absolutely. Measured absolutely, `alignment_slant` was largely reporting how
   the paper sat under the camera; fixing it cut its capture noise from 0.099 to
@@ -559,7 +582,7 @@ zero, it squashes them into a narrow band just above it, which has enough
 variance to pass a collapse alarm while rendering as a permanently empty bar.
 
 Two caveats worth repeating to anyone reading the panel: the separation is real
-but weak (same-writer means ~0.78-0.83 against ~0.63-0.72 for different people
+but weak (same-writer means ~0.82-0.87 against ~0.67-0.72 for different people
 on CEDAR spot checks), and the scale constants are uncalibrated - they set the
 scale of a score, not its meaning. Do not derive thresholds from them.
 
