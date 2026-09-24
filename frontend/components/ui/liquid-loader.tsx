@@ -60,13 +60,24 @@ export type LiquidLoadingProps = {
   className?: string;
   /** Announced to assistive tech, and used as the visually hidden label. */
   label?: string;
+  /**
+   * "block" is the full standalone wave. "inline" is a compact five-bar
+   * version sized to sit inside a button next to its label: no droplets, and
+   * bars grow from the centre rather than flipping below the baseline, which
+   * would spill outside the button.
+   */
+  variant?: "block" | "inline";
 };
 
 export default function LiquidLoading({
   palette = "brand",
   className = "",
   label = "Working…",
+  variant = "block",
 }: LiquidLoadingProps) {
+  if (variant === "inline") {
+    return <InlineWave palette={palette} className={className} />;
+  }
   const colors = PALETTES[palette];
   const glows = GLOWS[palette];
 
@@ -195,5 +206,65 @@ export default function LiquidLoading({
       ))}
       <span className="sr-only">{label}</span>
     </div>
+  );
+}
+
+const INLINE_BARS = 5;
+const INLINE_MAX = 16; // px, fits a 44-48px tall button with room to spare
+
+/**
+ * Compact wave for use inside a button, beside its label.
+ *
+ * Same maths as the block version, but bars grow symmetrically from the centre
+ * instead of flipping below the baseline - a flipped bar draws outside its own
+ * box and would hang out of the button. Decorative here: the button's own text
+ * ("Analysing signatures…") is what announces the state, so this is hidden
+ * from assistive tech rather than being a second live region.
+ */
+function InlineWave({
+  palette,
+  className = "",
+}: {
+  palette: keyof typeof PALETTES;
+  className?: string;
+}) {
+  const colors = PALETTES[palette];
+  const [heights, setHeights] = useState<number[]>(() => Array(INLINE_BARS).fill(INLINE_MAX * 0.4));
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setHeights(Array.from({ length: INLINE_BARS }, (_, i) => INLINE_MAX * (0.45 + 0.2 * Math.sin(i))));
+      return;
+    }
+    const interval = window.setInterval(() => {
+      const time = Date.now() * 0.001;
+      setHeights(
+        Array.from({ length: INLINE_BARS }, (_, index) => {
+          const delay = index * 0.8;
+          const wave =
+            Math.sin(time + delay) +
+            Math.sin(time * 4 + delay) * 0.15 +
+            Math.sin(time * 8 + delay) * 0.05;
+          // |wave| keeps every bar visible; the floor stops it collapsing to nothing.
+          return Math.max(INLINE_MAX * 0.22, INLINE_MAX * Math.abs(wave));
+        }),
+      );
+    }, FRAME_MS);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-flex h-5 shrink-0 items-center gap-[3px] ${className}`}
+    >
+      {heights.map((height, index) => (
+        <span
+          key={index}
+          className={`w-[5px] rounded-full bg-gradient-to-t ${colors[index]} transition-[height] duration-200 ease-out`}
+          style={{ height: `${height}px` }}
+        />
+      ))}
+    </span>
   );
 }

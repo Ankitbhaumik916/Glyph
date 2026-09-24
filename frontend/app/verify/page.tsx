@@ -216,6 +216,7 @@ export default function VerifyPage() {
                 disabled={!canSubmit}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-amber-200 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-slate-500"
               >
+                {isLoading && <LiquidLoading variant="inline" />}
                 {isLoading ? "Analysing signatures…" : "Verify signature"}
               </button>
               {(referenceFile || testFile) && !isLoading && (
@@ -230,13 +231,10 @@ export default function VerifyPage() {
             </div>
 
             {isLoading && (
-              <div className="mt-4 flex flex-col items-center">
-                <LiquidLoading label="Comparing the two signatures" />
-                <p className="mt-4 max-w-md text-center text-xs text-slate-500">
-                  Uploading both photos and running inference. Large photos on a slow
-                  connection are the slow part, not the model.
-                </p>
-              </div>
+              <p className="mt-3 text-center text-xs text-slate-500">
+                Uploading both photos and running inference. Large photos on a slow
+                connection are the slow part, not the model.
+              </p>
             )}
           </section>
         )}
