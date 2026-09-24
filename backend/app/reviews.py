@@ -14,6 +14,7 @@ import json
 import logging
 import threading
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
@@ -31,6 +32,40 @@ class ReviewsUnavailableError(VerificationError):
 class NotAuthorizedError(VerificationError):
     status_code = 401
     code = "not_authorized"
+
+
+class ReviewsTokenRejectedError(VerificationError):
+    """The server's own HF token was refused - not the caller's admin key.
+
+    These are trivial to confuse: the admin key gates the endpoint, the HF
+    token is what the server then uses to reach the dataset. A rotated token
+    used to surface here as a generic 500, which reads on the admin page as if
+    the key that was just typed were wrong. It is a separate code so the page
+    can say which credential actually failed.
+    """
+
+    status_code = 503
+    code = "reviews_token_rejected"
+
+
+@contextmanager
+def _translate_hf_errors():
+    """Turn a 401/403 from Hugging Face into a message naming the real cause."""
+    try:
+        yield
+    except Exception as exc:  # noqa: BLE001 - re-raised unless it is an auth failure
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        if status in (401, 403):
+            raise ReviewsTokenRejectedError(
+                "Hugging Face rejected this server's access token, so reviews cannot "
+                "be read or saved. Your admin key is fine - the server's token was "
+                "most likely revoked or rotated.",
+                hint=(
+                    "Set HF_TOKEN on the Space to a current write token for the "
+                    "account that owns the dataset, then restart the Space."
+                ),
+            ) from exc
+        raise
 
 
 class ReviewStore:
@@ -66,12 +101,13 @@ class ReviewStore:
         with self._lock:
             if self._repo_checked:
                 return
-            self._client().create_repo(
-                repo_id=config.REVIEWS_DATASET,
-                repo_type="dataset",
-                private=True,
-                exist_ok=True,
-            )
+            with _translate_hf_errors():
+                self._client().create_repo(
+                    repo_id=config.REVIEWS_DATASET,
+                    repo_type="dataset",
+                    private=True,
+                    exist_ok=True,
+                )
             self._repo_checked = True
 
     def _require_enabled(self) -> None:
@@ -89,13 +125,14 @@ class ReviewStore:
         review_id = f"{now.strftime('%Y%m%dT%H%M%S')}-{uuid.uuid4().hex[:8]}"
         record = {"id": review_id, "submitted_at": now.isoformat(), **review}
 
-        self._client().upload_file(
-            path_or_fileobj=json.dumps(record, indent=2).encode("utf-8"),
-            path_in_repo=f"reviews/{review_id}.json",
-            repo_id=config.REVIEWS_DATASET,
-            repo_type="dataset",
-            commit_message=f"review {review_id}",
-        )
+        with _translate_hf_errors():
+            self._client().upload_file(
+                path_or_fileobj=json.dumps(record, indent=2).encode("utf-8"),
+                path_in_repo=f"reviews/{review_id}.json",
+                repo_id=config.REVIEWS_DATASET,
+                repo_type="dataset",
+                commit_message=f"review {review_id}",
+            )
         log.info("review %s saved to %s", review_id, config.REVIEWS_DATASET)
         return review_id
 
@@ -114,10 +151,11 @@ class ReviewStore:
         self._ensure_repo()
         api = self._client()
 
-        files = [
-            f for f in api.list_repo_files(config.REVIEWS_DATASET, repo_type="dataset")
-            if f.startswith("reviews/") and f.endswith(".json")
-        ]
+        with _translate_hf_errors():
+            files = [
+                f for f in api.list_repo_files(config.REVIEWS_DATASET, repo_type="dataset")
+                if f.startswith("reviews/") and f.endswith(".json")
+            ]
         files.sort(reverse=True)  # ids start with a timestamp
 
         from huggingface_hub import hf_hub_download
@@ -125,14 +163,17 @@ class ReviewStore:
         out: list[dict[str, Any]] = []
         for name in files[:limit]:
             try:
-                path = hf_hub_download(
-                    repo_id=config.REVIEWS_DATASET,
-                    filename=name,
-                    repo_type="dataset",
-                    token=config.HF_TOKEN,
-                )
+                with _translate_hf_errors():
+                    path = hf_hub_download(
+                        repo_id=config.REVIEWS_DATASET,
+                        filename=name,
+                        repo_type="dataset",
+                        token=config.HF_TOKEN,
+                    )
                 with open(path, encoding="utf-8") as fh:
                     out.append(json.load(fh))
+            except ReviewsTokenRejectedError:
+                raise  # a dead token fails every file; report it, don't return []
             except Exception:  # noqa: BLE001 - one bad file shouldn't hide the rest
                 log.exception("Could not read review %s", name)
         return out

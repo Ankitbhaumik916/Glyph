@@ -42,7 +42,9 @@ export default function AdminPage() {
         err instanceof ApiError
           ? err.detail.code === "not_authorized"
             ? "That key was rejected."
-            : err.detail.message
+            : err.detail.hint
+              ? `${err.detail.message} ${err.detail.hint}`
+              : err.detail.message
           : "Could not load reviews.",
       );
     } finally {
@@ -126,7 +128,7 @@ export default function AdminPage() {
               <div className="ml-auto flex gap-2">
                 <button
                   type="button"
-                  onClick={() => void load(key)}
+                  onClick={() => void load(key.trim())}
                   className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/5"
                 >
                   Refresh
