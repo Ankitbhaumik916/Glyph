@@ -23,3 +23,13 @@ pillow>=10.3,<12.0
 
 # Writes reviews to a private dataset repo (see app/reviews.py).
 huggingface-hub>=0.25,<1.0
+
+# Signs session tokens for the account system (see app/auth.py). HS256 only,
+# so this pulls in no compiled crypto library. Password hashing uses stdlib
+# hashlib.scrypt and needs no dependency at all.
+PyJWT>=2.8,<3.0
+
+# Renders the exportable PDF report (see app/report.py). Pure Python, no
+# system libraries - which is why it is used here rather than a headless
+# browser: the Space image stays small and the build stays fast.
+reportlab>=4.1,<5.0

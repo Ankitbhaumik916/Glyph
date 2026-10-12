@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
+import AuthProvider from "@/components/AuthProvider";
+
 import "react-image-crop/dist/ReactCrop.css";
 import "./globals.css";
 
@@ -34,7 +36,9 @@ export default function RootLayout({
     // suppressHydrationWarning: the landing's pre-paint script adds `pre` to
     // <html> before React hydrates, which is a deliberate mismatch.
     <html lang="en" className={inter.variable} suppressHydrationWarning>
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

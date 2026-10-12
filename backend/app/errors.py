@@ -39,6 +39,13 @@ class PreprocessingFailedError(VerificationError):
     code = "preprocessing_failed"
 
 
+class ReportUnavailableError(VerificationError):
+    """reportlab is missing, so the PDF cannot be rendered."""
+
+    status_code = 503
+    code = "report_unavailable"
+
+
 class ModelNotLoadedError(VerificationError):
     status_code = 503
     code = "model_not_loaded"

@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import AppHeader from "@/components/AppHeader";
+import { useAuth } from "@/components/AuthProvider";
 import { ApiError, fetchReviews, type ReviewRecord } from "@/lib/api";
-
-const KEY_STORAGE = "glyph-admin-key";
 
 function Stars({ n }: { n: number }) {
   return (
@@ -23,25 +24,23 @@ const VERDICT_TONE: Record<string, string> = {
 };
 
 export default function AdminPage() {
-  const [key, setKey] = useState("");
+  const router = useRouter();
+  const { token, email, isAdmin, loading: authLoading } = useAuth();
   const [reviews, setReviews] = useState<ReviewRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async (adminKey: string) => {
+  const load = useCallback(async (sessionToken: string) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchReviews(adminKey);
-      setReviews(data);
-      // Session-only: not localStorage, so the key dies with the tab.
-      sessionStorage.setItem(KEY_STORAGE, adminKey);
+      setReviews(await fetchReviews({ token: sessionToken }));
     } catch (err) {
       setReviews(null);
       setError(
         err instanceof ApiError
-          ? err.detail.code === "not_authorized"
-            ? "That key was rejected."
+          ? err.detail.code === "forbidden" || err.detail.code === "not_authorized"
+            ? "This page is only available to the site owner."
             : err.detail.hint
               ? `${err.detail.message} ${err.detail.hint}`
               : err.detail.message
@@ -52,19 +51,17 @@ export default function AdminPage() {
     }
   }, []);
 
+  // Not signed in at all: send them to sign in and come back.
   useEffect(() => {
-    const saved = sessionStorage.getItem(KEY_STORAGE);
-    if (saved) {
-      setKey(saved);
-      void load(saved);
-    }
-  }, [load]);
+    if (!authLoading && !email) router.replace("/login?next=/admin");
+  }, [authLoading, email, router]);
 
-  const signOut = () => {
-    sessionStorage.removeItem(KEY_STORAGE);
-    setKey("");
-    setReviews(null);
-  };
+  // Signed in as the owner: load without asking for anything else. A
+  // non-owner session never issues this request, and would be refused by the
+  // server if it did.
+  useEffect(() => {
+    if (!authLoading && isAdmin && token) void load(token);
+  }, [authLoading, isAdmin, token, load]);
 
   const avg =
     reviews && reviews.length
@@ -81,35 +78,31 @@ export default function AdminPage() {
           Feedback left by testers. Stored in a private dataset repo - this page just reads it.
         </p>
 
-        {!reviews && (
-          <form
-            className="mt-8 max-w-sm"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void load(key.trim());
-            }}
-          >
-            <label htmlFor="admin-key" className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Admin key
-            </label>
-            <input
-              id="admin-key"
-              type="password"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              autoComplete="off"
-              className="mt-2 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-slate-200 focus:border-amber-400/50 focus:outline-none"
-              placeholder="ADMIN_KEY set on the backend"
-            />
-            <button
-              type="submit"
-              disabled={loading || !key.trim()}
-              className="mt-3 w-full rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-amber-200 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-slate-500"
+        {authLoading && <p className="mt-8 text-sm text-slate-500">Checking your session&hellip;</p>}
+
+        {/* Signed in, but not the owner. The server would refuse the request
+            anyway; this is so the page says something sensible instead of
+            sitting empty. */}
+        {!authLoading && email && !isAdmin && (
+          <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-8 text-center">
+            <p className="text-sm text-slate-300">This page is only available to the site owner.</p>
+            <p className="mt-1 text-xs text-slate-500">Signed in as {email}.</p>
+            <Link
+              href="/verify"
+              className="mt-5 inline-block rounded-full bg-white px-5 py-2 text-xs font-semibold text-ink transition-colors hover:bg-amber-200"
             >
-              {loading ? "Checking…" : "Unlock"}
-            </button>
-            {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
-          </form>
+              Back to the tester
+            </Link>
+          </div>
+        )}
+
+        {!authLoading && isAdmin && !reviews && (
+          <p className="mt-8 text-sm text-slate-500">
+            {loading ? "Loading reviews…" : error ?? "No reviews loaded."}
+          </p>
+        )}
+        {!authLoading && isAdmin && reviews && error && (
+          <p className="mt-3 text-xs text-red-400">{error}</p>
         )}
 
         {reviews && (
@@ -128,17 +121,10 @@ export default function AdminPage() {
               <div className="ml-auto flex gap-2">
                 <button
                   type="button"
-                  onClick={() => void load(key.trim())}
+                  onClick={() => token && void load(token)}
                   className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/5"
                 >
                   Refresh
-                </button>
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-slate-400 hover:bg-white/5"
-                >
-                  Lock
                 </button>
               </div>
             </div>

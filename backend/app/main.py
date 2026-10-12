@@ -9,22 +9,27 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, Form, Header, Request, UploadFile
+from fastapi import FastAPI, File, Form, Header, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from . import config
+from . import auth, config
 from .cropping import parse_crop
-from .errors import VerificationError
+from .errors import ReportUnavailableError, VerificationError
 from .model_service import verifier
 from .reviews import store as review_store
 from .schemas import (
     ErrorResponse,
     HealthResponse,
+    LoginIn,
+    MeOut,
     PreviewResponse,
+    ReportRequest,
     ReviewAck,
     ReviewIn,
     ReviewList,
+    SessionOut,
+    SignupIn,
     VerifyResponse,
 )
 
@@ -53,6 +58,11 @@ async def lifespan(app: FastAPI):
     except Exception as exc:  # noqa: BLE001
         verifier.load_error = f"{type(exc).__name__}: {exc}"
         log.error("MODEL FAILED TO LOAD - /api/verify will return 503. %s", verifier.load_error)
+    # The admin account cannot be registered through the signup form, so it has
+    # to come into existence here. A no-op once it exists, and it never blocks
+    # startup.
+    auth.warn_on_weak_secret()
+    auth.store.seed_admin()
     yield
 
 
@@ -219,8 +229,109 @@ def submit_review(review: ReviewIn) -> ReviewAck:
     responses={401: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
     tags=["reviews"],
 )
-def list_reviews(x_admin_key: str | None = Header(None)) -> ReviewList:
-    """Read the reviews back. Requires the admin key in an X-Admin-Key header."""
-    review_store.authorize(x_admin_key)
+def list_reviews(
+    x_admin_key: str | None = Header(None),
+    authorization: str | None = Header(None),
+) -> ReviewList:
+    """Read the reviews back. Owner only.
+
+    Two credentials are accepted and both are checked here, server-side, on
+    every request: a signed-in session whose email is the admin's, or the
+    pre-existing X-Admin-Key. A logged-in non-admin calling this directly gets
+    403 regardless of what the frontend chose to render - hiding the nav link
+    is not what protects this data.
+
+    The admin comparison itself is not repeated here: it is auth.is_admin,
+    which is the one place that address is compared.
+    """
+    if authorization:
+        auth.require_admin(authorization)      # raises 401 or 403
+    else:
+        review_store.authorize(x_admin_key)    # raises 401
     reviews = review_store.list()
     return ReviewList(reviews=reviews, count=len(reviews))
+
+
+@app.post(
+    "/api/report",
+    responses={
+        200: {"content": {"application/pdf": {}}, "description": "The rendered report."},
+        503: {"model": ErrorResponse},
+    },
+    tags=["report"],
+)
+def export_report(payload: ReportRequest) -> Response:
+    """Render a comparison as a PDF report.
+
+    A rendering endpoint, not a data one: the caller sends back the result it
+    already has and gets a document. It deliberately does not re-run the
+    comparison, so the report cannot disagree with the screen the user
+    exported it from.
+
+    The report keeps the model verdict and the advisory measurements in
+    separate sections with nothing combining them - see app/report.py for why
+    that separation is load-bearing.
+    """
+    from .report import build_pdf
+
+    try:
+        pdf = build_pdf(payload.model_dump())
+    except ImportError as exc:
+        log.exception("report export unavailable")
+        raise ReportUnavailableError(
+            "PDF export is not available on this server.",
+            hint="Install reportlab (it is in requirements.txt) and restart.",
+        ) from exc
+
+    stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="glyph-report-{stamp}.pdf"'},
+    )
+
+
+@app.post(
+    "/api/auth/signup",
+    response_model=SessionOut,
+    responses={
+        403: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        503: {"model": ErrorResponse},
+    },
+    tags=["auth"],
+)
+def signup(payload: SignupIn) -> SessionOut:
+    """Create an account and return a session.
+
+    The admin address is refused here: that account is seeded at startup, so it
+    cannot be claimed through this form.
+    """
+    return SessionOut(**auth.signup(payload.email, payload.password))
+
+
+@app.post(
+    "/api/auth/login",
+    response_model=SessionOut,
+    responses={401: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+    tags=["auth"],
+)
+def login(payload: LoginIn) -> SessionOut:
+    return SessionOut(**auth.login(payload.email, payload.password))
+
+
+@app.get(
+    "/api/auth/me",
+    response_model=MeOut,
+    responses={401: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+    tags=["auth"],
+)
+def me(authorization: str | None = Header(None)) -> MeOut:
+    """Who this token belongs to, and whether that is the owner.
+
+    `is_admin` is recomputed from the email on every call rather than read out
+    of the token, so an old token cannot carry an admin claim that is no longer
+    true.
+    """
+    email = auth.email_from_header(authorization)
+    return MeOut(email=email, is_admin=auth.is_admin(email))

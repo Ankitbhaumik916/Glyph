@@ -76,5 +76,28 @@ REVIEWS_DATASET = os.getenv("REVIEWS_DATASET", "").strip()  # e.g. AnkBhau/glyph
 # real protection; this keeps the convenience endpoint from being world-readable.
 ADMIN_KEY = os.getenv("ADMIN_KEY", "").strip()
 
+# --- Accounts ----------------------------------------------------------------
+# One hardcoded admin, not a role system. app/auth.py::is_admin is the only
+# place this address is compared, and the browser is never told what it is -
+# the server sends back a boolean instead.
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "ankitbhaumik23@gmail.com").strip()
+
+# Seeds the admin account at startup. Signup refuses the admin address, so this
+# is the only way that account is created. Unset after the first boot if you
+# prefer; the account persists in the dataset repo.
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
+# Signs session tokens. There is deliberately NO default: without it accounts
+# are switched off rather than protected by a value that is in the repo.
+AUTH_SECRET = os.getenv("AUTH_SECRET", "").strip()
+
+# Accounts live in a private dataset repo for the same reason reviews do - the
+# Space's disk does not survive a restart. Defaults to the reviews dataset, so
+# no second repo or secret is needed; users land under a users/ prefix, which
+# the reviews listing filters out.
+USERS_DATASET = os.getenv("USERS_DATASET", "").strip()
+
+SESSION_TTL_HOURS = int(os.getenv("SESSION_TTL_HOURS", "168"))  # one week
+
 # Inference is small; leaving torch to grab every core hurts more than it helps.
 TORCH_NUM_THREADS = int(os.getenv("TORCH_NUM_THREADS", "4"))

@@ -239,7 +239,7 @@ export default function VerifyPage() {
           </section>
         )}
 
-        {result && <ResultPanel result={result} onReset={handleReset} />}
+        {result && <ResultPanel result={result} onReset={handleReset} health={health} />}
 
         <footer className="mt-12 border-t border-white/10 pt-4 text-xs text-slate-600">
           <p>{DISCLAIMER}</p>

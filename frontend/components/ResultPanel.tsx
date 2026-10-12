@@ -1,12 +1,16 @@
 "use client";
 
+import { useState } from "react";
+
 import ForensicPanel from "@/components/ForensicPanel";
 import ReviewForm from "@/components/ReviewForm";
-import type { VerifyResult } from "@/lib/api";
+import { ApiError, exportReport, type HealthResult, type VerifyResult } from "@/lib/api";
 
 interface Props {
   result: VerifyResult;
   onReset: () => void;
+  /** Only for the report's status line - the operating point behind the run. */
+  health?: HealthResult | null | "error";
 }
 
 function pct(value: number, max: number): number {
@@ -44,7 +48,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-export default function ResultPanel({ result, onReset }: Props) {
+export default function ResultPanel({ result, onReset, health }: Props) {
   const {
     distance,
     threshold,
@@ -58,6 +62,53 @@ export default function ResultPanel({ result, onReset }: Props) {
     preprocessed_ref_base64,
     preprocessed_test_base64,
   } = result;
+
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const live = health && health !== "error" ? health : null;
+      const blob = await exportReport({
+        distance,
+        threshold,
+        max_distance,
+        is_genuine,
+        is_borderline,
+        borderline_band,
+        variants,
+        variant_spread,
+        confidence,
+        forensic: result.forensic ?? null,
+        // Metadata the status bar already holds, so the report can state the
+        // operating point the run used. No extra request is made for it.
+        threshold_source: live?.threshold_source ?? null,
+        bundle_threshold: live?.bundle_threshold ?? null,
+        model_architecture:
+          typeof live?.model_info?.architecture === "string"
+            ? live.model_info.architecture
+            : null,
+      });
+      const url = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `glyph-report-${stamp}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // Revoking immediately can cancel the download in some browsers.
+      window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (err) {
+      setExportError(
+        err instanceof ApiError ? err.detail.message : "Could not generate the report.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const tone = is_borderline
     ? {
@@ -196,13 +247,33 @@ export default function ResultPanel({ result, onReset }: Props) {
 
       <ReviewForm result={result} />
 
-      <button
-        type="button"
-        onClick={onReset}
-        className="w-full rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/5"
-      >
-        Run another comparison
-      </button>
+      <div className="space-y-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex-1 rounded-full bg-white px-4 py-3 text-sm font-semibold text-ink transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {exporting ? "Preparing the report…" : "Export the result (PDF)"}
+          </button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="flex-1 rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/5"
+          >
+            Run another comparison
+          </button>
+        </div>
+        {exportError ? (
+          <p className="text-center text-xs text-red-400">{exportError}</p>
+        ) : (
+          <p className="text-center text-xs text-slate-600">
+            A report of this comparison, with the verdict and the supporting analysis kept
+            as separate sections.
+          </p>
+        )}
+      </div>
     </section>
   );
 }

@@ -28,6 +28,30 @@ export interface VerifyResult {
   forensic?: ForensicAnalysis | null;
 }
 
+/**
+ * Body of POST /api/report: the result, plus the model metadata the status bar
+ * already shows. Mirrors backend/app/schemas.py ReportRequest.
+ *
+ * There is deliberately no combined-score field: the report renders the model
+ * verdict and the advisory measurements as separate sections.
+ */
+export interface ReportPayload {
+  distance: number;
+  threshold: number;
+  max_distance: number;
+  is_genuine: boolean;
+  is_borderline: boolean;
+  borderline_band: number;
+  variants: number;
+  variant_spread: number;
+  confidence: number;
+  forensic?: ForensicAnalysis | null;
+  threshold_source?: string | null;
+  bundle_threshold?: number | null;
+  model_architecture?: string | null;
+  document_type?: string | null;
+}
+
 /** Crop rectangle in 0-1 units of the (EXIF-oriented) image. */
 export interface CropBox {
   x: number;
@@ -195,15 +219,52 @@ export async function submitReview(review: ReviewInput, signal?: AbortSignal): P
   return ((await response.json()) as { id: string }).id;
 }
 
-/** Owner-only: needs the admin key the server was started with. */
+/**
+ * Render the result as a PDF report.
+ *
+ * Everything sent here is already on the result page, so exporting neither
+ * re-runs the comparison nor fetches anything extra: the document cannot
+ * disagree with the screen it was exported from.
+ */
+export async function exportReport(
+  payload: ReportPayload,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError({
+      code: "backend_unreachable",
+      message: `Could not reach the backend at ${API_URL}.`,
+    });
+  }
+  if (!response.ok) throw await toApiError(response);
+  return response.blob();
+}
+
+/**
+ * Owner-only. Pass a session token for a signed-in admin, or the legacy admin
+ * key. Either way the server re-checks the credential - this header choice is
+ * not what protects the data.
+ */
 export async function fetchReviews(
-  adminKey: string,
+  credential: { token: string } | { adminKey: string },
   signal?: AbortSignal,
 ): Promise<ReviewRecord[]> {
   let response: Response;
   try {
     response = await fetch(`${API_URL}/api/reviews`, {
-      headers: { "X-Admin-Key": adminKey },
+      headers:
+        "token" in credential
+          ? { Authorization: `Bearer ${credential.token}` }
+          : { "X-Admin-Key": credential.adminKey },
       cache: "no-store",
       signal,
     });
@@ -216,6 +277,70 @@ export async function fetchReviews(
   }
   if (!response.ok) throw await toApiError(response);
   return ((await response.json()) as { reviews: ReviewRecord[] }).reviews;
+}
+
+/**
+ * A signed-in session. `is_admin` is computed by the server from the signed-in
+ * email: the admin address is never sent to the browser, so it is not in this
+ * bundle. Acting on this flag is presentation only - every request that
+ * returns owner data is re-checked server-side.
+ */
+export interface Session {
+  token: string;
+  email: string;
+  is_admin: boolean;
+  expires_in: number;
+}
+
+async function postJson<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError({
+      code: "backend_unreachable",
+      message: `Could not reach the backend at ${API_URL}.`,
+    });
+  }
+  if (!response.ok) throw await toApiError(response);
+  return (await response.json()) as T;
+}
+
+export function signUp(email: string, password: string, signal?: AbortSignal) {
+  return postJson<Session>("/api/auth/signup", { email, password }, signal);
+}
+
+export function signIn(email: string, password: string, signal?: AbortSignal) {
+  return postJson<Session>("/api/auth/login", { email, password }, signal);
+}
+
+/** Re-validates a stored token and re-reads whether it is the owner's. */
+export async function fetchMe(
+  token: string,
+  signal?: AbortSignal,
+): Promise<{ email: string; is_admin: boolean }> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError({
+      code: "backend_unreachable",
+      message: `Could not reach the backend at ${API_URL}.`,
+    });
+  }
+  if (!response.ok) throw await toApiError(response);
+  return (await response.json()) as { email: string; is_admin: boolean };
 }
 
 export async function fetchHealth(signal?: AbortSignal): Promise<HealthResult> {

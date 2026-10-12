@@ -35,15 +35,26 @@ and inspecting the result.
 │   ├── app/
 │   │   ├── main.py                 # FastAPI app, routes, error handlers
 │   │   ├── model_service.py        # model loading, preprocessing, inference
+│   │   ├── cropping.py             # crop parsing, ink box, canonicalization
+│   │   ├── forensic_features.py    # supporting visual analysis (never the verdict)
+│   │   ├── report.py               # the exportable PDF, two unmixed sections
+│   │   ├── auth.py                 # accounts, sessions, the single is_admin()
+│   │   ├── reviews.py              # tester reviews -> private dataset repo
 │   │   ├── config.py               # env-var configuration
 │   │   ├── errors.py               # typed errors -> clean JSON
 │   │   └── schemas.py              # response models
+│   ├── tests/
+│   │   ├── test_verdict_isolation.py   # the forensic layer cannot move the verdict
+│   │   ├── test_feature_variance.py    # no feature has silently collapsed
+│   │   ├── test_report.py              # the report cannot re-merge the two sections
+│   │   └── test_auth_access.py         # a logged-in non-owner cannot read reviews
 │   ├── tools/
-│   │   └── calibrate.py            # fit the threshold on your own photos
+│   │   ├── calibrate.py            # fit the threshold on your own photos
+│   │   └── push_space.py           # backend-only push to the Space
 │   └── requirements.txt
 ├── frontend/
-│   ├── app/                        # App Router pages
-│   ├── components/                 # dropzone, result panel
+│   ├── app/                        # App Router pages (/, /verify, /login, /admin)
+│   ├── components/                 # dropzone, result panel, auth provider
 │   └── lib/api.ts                  # typed client for the backend
 ├── Dockerfile                      # backend image for the Hugging Face Space
 └── README.md
@@ -108,6 +119,18 @@ If the model fails to load, the server **stays up** and reports the reason at
 then returns `503` until it is fixed.
 
 ### Endpoints
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/health` | Liveness, model readiness, threshold and its source |
+| `POST /api/verify` | Compare two signatures |
+| `POST /api/preprocess` | What the model will see, for the live crop preview |
+| `POST /api/report` | Render a result as a PDF (see [Exporting a result](#exporting-a-result)) |
+| `POST /api/reviews` | Leave a review — no account needed |
+| `GET /api/reviews` | Read reviews — **owner only**, checked server-side |
+| `POST /api/auth/signup` | Create an account; refuses the owner address |
+| `POST /api/auth/login` | Exchange email + password for a session token |
+| `GET /api/auth/me` | Who this token is, and whether that is the owner |
 
 #### `GET /api/health`
 
@@ -269,6 +292,11 @@ highlight the right box.
 | `CORS_ORIGIN_REGEX` | unset | Regex of allowed origins, for Vercel preview URLs |
 | `CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated allowed origins |
 | `TORCH_NUM_THREADS` | `4` | Torch intra-op threads |
+| `AUTH_SECRET` | unset | Signs session tokens. **No default** — accounts are off until it is set. Use 32+ chars |
+| `ADMIN_EMAIL` | `ankitbhaumik23@gmail.com` | The one address that may read reviews |
+| `ADMIN_PASSWORD` | unset | Seeds the owner account on first boot; the signup form refuses that address |
+| `USERS_DATASET` | `$REVIEWS_DATASET` | Dataset repo holding accounts, under a `users/` prefix |
+| `SESSION_TTL_HOURS` | `168` | Session lifetime (one week) |
 
 ---
 
@@ -302,7 +330,8 @@ are inlined at build time — restart `npm run dev` after changing it.
 | --- | --- |
 | `/` | Landing page: looping storm video, how it works, the preview feature, honest accuracy numbers |
 | `/verify` | The tester. No sign-up - the landing CTA goes straight here |
-| `/admin` | Reviews left by testers. Asks for the admin key; owner only |
+| `/login` | Sign in / create an account. Comparing signatures does not require one |
+| `/admin` | Reviews left by testers. Owner only — the nav link does not render for anyone else |
 
 ### Reviews
 
@@ -322,7 +351,7 @@ command):
 | --- | --- | --- |
 | `REVIEWS_DATASET` | Variable | `<user>/glyph-reviews` - created automatically on first review |
 | `HF_TOKEN` | **Secret** | A write token, so the Space can commit to that repo |
-| `ADMIN_KEY` | **Secret** | Whatever you want to type on `/admin` |
+| `ADMIN_KEY` | **Secret** | A second way into the reviews endpoint, for `curl` when login is not convenient |
 
 With these unset the app still works; the review form just reports that reviews
 are not configured.
@@ -423,6 +452,8 @@ same way, and set these under **Settings → Variables and secrets**:
 | `CORS_ORIGINS` | `https://<your-app>.vercel.app` |
 | `CORS_ORIGIN_REGEX` | `https://[a-z0-9-]+\.vercel\.app` (allows Vercel preview builds) |
 | `TTA_VARIANTS` | `5` on the free 2-vCPU tier, to keep a verify near ~2 s |
+| `AUTH_SECRET` | **Secret.** `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
+| `ADMIN_PASSWORD` | **Secret.** Your own password; the owner account is created from it on first boot |
 
 Free Spaces sleep when idle, so the first request after a nap pays a cold start
 (container boot plus a few seconds of model loading) — worth warning testers
@@ -590,6 +621,98 @@ Deliberately not implemented: pen pressure, pen lift, writing speed and tremor.
 A static photo carries no temporal signal and ink density is confounded by pen,
 paper and exposure, so these would be decorative "PASS" scores with nothing
 behind them.
+
+## Exporting a result
+
+The result page has an **Export the result (PDF)** button. `POST /api/report`
+takes the result the page already holds and returns a rendered document; it is
+a renderer, not a data endpoint, so it never re-runs the comparison and the
+report cannot disagree with the screen it came from. The model and threshold
+metadata in the status line comes from the `/api/health` call the page has
+already made, so exporting costs no extra lookup.
+
+The layout follows the predecessor project's report — header bar, case bar,
+boxed verdict, feature table, observations, recommendation, disclaimer with a
+report ID — and deliberately none of its logic. **That report merged the neural
+similarity with an aggregate of the forensic features into one "SWGDOC verdict"
+with a single confidence number, which is the bug this codebase was rebuilt to
+remove.** So the document has two sections that never meet:
+
+- **MODEL VERDICT**, from the model's output alone: distance, threshold,
+  genuine / borderline, and the margin from the boundary.
+- **FORENSIC FEATURE ANALYSIS (ADVISORY — NOT USED IN VERDICT)**, labelled that
+  way in the heading, listing the five kept features with what each compares and
+  how camera-robust it measured. The recommendation is derived from the verdict
+  and nothing else.
+
+There is no number anywhere that combines the two, and no per-feature pass mark:
+`forensic_features.py` is explicit that thresholds must not be derived from its
+scores, so the **Status** column says `Measured` or `Not measurable` and never
+whether a feature passed. A pass mark per row would be the merged verdict again,
+one level down.
+
+`tests/test_report.py` enforces this rather than trusting it. It fails if the
+rendered text contains a PASS/WARN/FAIL verdict word, if the recommendation
+changes when the advisory scores are swapped for all-0.01, all-0.99 or all-null,
+or if the report's feature list drifts from `forensic_features.FEATURE_ORDER` —
+so retiring a feature removes it from the document too.
+
+## Accounts and who can read reviews
+
+Email and password, with a single hardcoded owner. Not a role system.
+
+- Accounts live in the private dataset repo under a `users/` prefix, for the
+  same reason reviews do: the Space's disk is wiped on every restart, so a
+  SQLite file there would silently lose every account between deploys. One JSON
+  per user at a path derived from a hash of the email, so a lookup is one fetch
+  and the repo's file names are not a list of everyone's address.
+- Passwords are hashed with stdlib `hashlib.scrypt` (n=2¹⁵, per-user salt), so
+  no hashing dependency is needed. Session tokens are HS256 JWTs signed with
+  `AUTH_SECRET`, which has **no default** — unset, accounts are switched off
+  rather than protected by a value that is in this repo.
+- **The owner account cannot be registered.** Signup refuses `ADMIN_EMAIL`
+  outright, and that account is seeded at startup from `ADMIN_PASSWORD`.
+  Without this, whoever signed up with that address first would own the
+  Reviews page.
+- `is_admin()` in `app/auth.py` is the only place the owner address is
+  compared, by the nav, the page guard and the API guard alike. It requires an
+  exact match after case folding: `ankit.bhaumik23@gmail.com` reaches the same
+  Gmail inbox but is a different string, and the safe direction for that
+  ambiguity is to deny.
+
+### What is and is not the boundary
+
+The Reviews link is absent from the header for everyone but the owner — not
+greyed, not disabled, not in the DOM — and `/admin` shows a notice instead of
+content. **Both are presentation.** What protects the data is the owner check
+inside `GET /api/reviews`, which runs server-side on every request, and which a
+logged-in non-owner fails with 403 whatever the frontend chose to render.
+
+`is_admin` is recomputed from the session's email on every request rather than
+read out of the token, so a token that claims `"is_admin": true` for a
+non-owner is ignored even when it is correctly signed.
+
+The admin address never reaches the browser: login and `/api/auth/me` return a
+boolean the server computed, so the address is not in the client bundle (the
+build is checked for it). Verified behaviour:
+
+| Request to `/api/reviews` | Result |
+| --- | --- |
+| No credentials | 401 |
+| **Signed-in non-owner session** | **403** |
+| Owner session | 200 |
+| Valid `X-Admin-Key` | 200 |
+| Wrong `X-Admin-Key` | 401 |
+| Signup as `ADMIN_EMAIL` | 403, account unchanged |
+
+### Known limits
+
+Signup is open, so anyone can create an account; non-owners can never read
+reviews, so the exposure is junk accounts rather than disclosure. The store has
+no compare-and-set, so two simultaneous signups for the *same* new email could
+race, with the later write winning — the owner address is exempt from signup
+entirely, so that race cannot touch it. Leaving a review still needs no account,
+which is deliberate: testers were already using that flow.
 
 ## Calibrating the threshold on your own photos
 

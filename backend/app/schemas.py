@@ -153,3 +153,70 @@ class HealthResponse(BaseModel):
     model_info: dict[str, Any] | None = None
     reviews_enabled: bool = False
     error: str | None = None
+
+
+class ReportRequest(BaseModel):
+    """Input for the exportable PDF report.
+
+    The result page already holds every one of these fields, so exporting adds
+    no data round-trip and does not re-run a verification: the page sends back
+    what it was given and receives a rendered document. `model_architecture`
+    and the threshold-source fields come from /api/health, which that page has
+    already fetched for its status bar.
+
+    There is deliberately no field here for a combined or overall score. The
+    report renders the model verdict and the advisory measurements as two
+    separate sections and has nothing that fuses them - see app/report.py.
+    """
+
+    # `model_architecture` trips pydantic's protected `model_` namespace.
+    model_config = ConfigDict(protected_namespaces=())
+
+    distance: float
+    threshold: float
+    max_distance: float = 2.0
+    is_genuine: bool
+    is_borderline: bool
+    borderline_band: float = 0.05
+    variants: int = 1
+    variant_spread: float = 0.0
+    confidence: float
+    forensic: ForensicAnalysis | None = None
+
+    threshold_source: str | None = None
+    bundle_threshold: float | None = None
+    model_architecture: str | None = None
+    document_type: str | None = Field(
+        None, max_length=120, description='Free text, e.g. "Cheque" or "Contract".'
+    )
+
+
+class SignupIn(BaseModel):
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., max_length=200)
+
+
+class LoginIn(BaseModel):
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., max_length=200)
+
+
+class SessionOut(BaseModel):
+    """What the browser is told about a session.
+
+    `is_admin` is computed on the server from the signed-in email. The admin
+    address itself is never sent, so it does not end up in a client bundle;
+    this boolean is only what decides whether the Reviews link is rendered,
+    and hiding that link is not the security boundary - the check inside
+    /api/reviews is.
+    """
+
+    token: str
+    email: str
+    is_admin: bool
+    expires_in: int
+
+
+class MeOut(BaseModel):
+    email: str
+    is_admin: bool
