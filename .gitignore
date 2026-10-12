@@ -40,3 +40,11 @@ Thumbs.db
 
 # pytest
 .pytest_cache/
+
+# Training artifacts and dataset splits produced outside the app. The served
+# model lives in model/ and is tracked via LFS; these are experiment outputs,
+# and .pth checkpoints are far too large to belong in git.
+*.pth
+combined_split.json
+writer_split.json
+new_dataset_contact_sheet.png
