@@ -190,6 +190,13 @@ class ReportRequest(BaseModel):
         None, max_length=120, description='Free text, e.g. "Cheque" or "Contract".'
     )
 
+    # The 155x155 images the model actually received, base64 PNG without the
+    # data: prefix - the same pair the result page shows. They go in the
+    # report's Observations section, because a reader cannot judge any of the
+    # numbers without seeing whether preprocessing found the signature at all.
+    preprocessed_ref_base64: str | None = None
+    preprocessed_test_base64: str | None = None
+
 
 class SignupIn(BaseModel):
     email: str = Field(..., max_length=254)

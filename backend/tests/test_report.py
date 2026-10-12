@@ -51,7 +51,34 @@ BORDERLINE = {**GENUINE, "is_borderline": True, "distance": 0.3801, "confidence"
 FORGED = {**GENUINE, "is_genuine": False, "distance": 0.6639, "confidence": 0.1681}
 NO_CROP = {**GENUINE, "forensic": None, "variants": 1, "variant_spread": 0.0}
 
-ALL_CASES = (GENUINE, BORDERLINE, FORGED, NO_CROP)
+
+
+def _tiny_png(slant: int = 0) -> str:
+    """A 155x155 stand-in for a preprocessed signature.
+
+    `slant` keeps the reference and questioned images from being byte-identical:
+    a PDF stores one XObject for two identical images, which would make an
+    image-count assertion pass for the wrong reason.
+    """
+    import base64 as b64
+    from io import BytesIO
+
+    from PIL import Image, ImageDraw
+
+    image = Image.new("L", (155, 155), 0)
+    ImageDraw.Draw(image).line([(14, 90 + slant), (140, 70 - slant)], fill=255, width=2)
+    buffer = BytesIO()
+    image.save(buffer, "PNG")
+    return b64.b64encode(buffer.getvalue()).decode()
+
+
+GENUINE_WITH_IMAGES = {
+    **GENUINE,
+    "preprocessed_ref_base64": _tiny_png(0),
+    "preprocessed_test_base64": _tiny_png(9),
+}
+
+ALL_CASES = (GENUINE, BORDERLINE, FORGED, NO_CROP, GENUINE_WITH_IMAGES)
 
 # Status words from the old report's per-feature verdict. A feature here gets
 # "Measured" / "Not measurable" and nothing else: forensic_features.py is
@@ -66,7 +93,11 @@ def _text(payload: dict) -> str:
     from io import BytesIO
 
     reader = pypdf.PdfReader(BytesIO(report.build_pdf(payload)))
-    return "\n".join(page.extract_text() for page in reader.pages)
+    joined = " ".join(page.extract_text() for page in reader.pages)
+    # The body is justified, so sentences wrap in whatever place this render
+    # happened to choose. Collapse whitespace rather than writing every
+    # assertion around a particular line break.
+    return re.sub(r"\s+", " ", joined)
 
 
 # --- the separation ---------------------------------------------------------
@@ -177,10 +208,24 @@ def test_ids_are_fresh_per_export():
     first, second = report.new_ids(now), report.new_ids(now)
     assert first != second
     case_id, report_id = first
-    assert case_id.startswith("GLY-")
+    # Shaped like the laboratory's references, with its own prefix so a report
+    # is not mistaken for a case the laboratory opened.
+    assert case_id.startswith("GLYQD/")
+    assert report.financial_year(now) in case_id
     assert report_id.startswith("R-")
     # Not the predecessor's scheme (a bare millisecond timestamp).
-    assert not case_id.lstrip("GLY-").isdigit()
+    assert not case_id.rsplit("/", 1)[-1].isdigit()
+
+
+def test_financial_year_rolls_in_april():
+    from datetime import datetime, timezone
+
+    def fy(y, m):
+        return report.financial_year(datetime(y, m, 1, tzinfo=timezone.utc))
+
+    assert fy(2026, 10) == "26-27"
+    assert fy(2027, 3) == "26-27"    # March is still the old year
+    assert fy(2027, 4) == "27-28"    # April starts the new one
 
 
 def test_rendered_text_has_no_pass_fail_verdict_words():
@@ -191,15 +236,15 @@ def test_rendered_text_has_no_pass_fail_verdict_words():
 
 def test_rendered_text_labels_the_advisory_section():
     text = _text(GENUINE)
-    assert "ADVISORY - NOT USED IN VERDICT" in text
-    assert "MODEL VERDICT" in text
+    assert "advisory – not used in the result" in text
+    assert "5. Result of the comparison" in text
     assert "did not" in text and "contribute to the distance" in text
 
 
 def test_rendered_text_keeps_the_two_summary_numbers_apart():
     """A reader must not be able to mistake the advisory mean for a confidence."""
     text = _text(GENUINE)
-    assert "not combined with the model margin above" in text
+    assert "not combined with the margin in section 5" in text
     assert "it is not a confidence" in text
     # The margin is labelled as a distance from the boundary, not a probability.
     assert "not a probability" in text
@@ -233,3 +278,81 @@ def test_calibrated_threshold_is_reported_as_such():
                   "threshold": 0.42, "bundle_threshold": 0.393784})
     assert "CALIBRATED" in text
     assert "bundle default was 0.3938" in text
+
+
+# --- the letterhead format --------------------------------------------------
+
+def test_report_never_claims_a_human_examiner():
+    """The layout follows a real laboratory's signed opinion. The content must
+    not: nobody examined these documents, and the document has to say so."""
+    text = _text(GENUINE)
+    assert "not an expert opinion" in text
+    assert "No examiner has reviewed this report" in text
+    assert "no signature because no one has certified its contents" in text
+
+    lowered = text.lower()
+    # No examiner name, credentials, or first-person opinion anywhere.
+    for forbidden in ("debarya", "scientific officer", "i am of the opinion",
+                      "in my opinion", "msc", "b.sc", "examiner:"):
+        assert forbidden not in lowered, f"report implies a human examiner: {forbidden}"
+
+
+def test_report_does_not_head_a_section_opinion():
+    """The laboratory's report carries an 'Opinion'; a machine's carries a
+    recommendation. The distinction is the whole point."""
+    text = _text(GENUINE)
+    assert "Recommendation" in text
+    # "Opinion" appears only inside the disclaimer sentences, never as a
+    # section heading of its own.
+    assert not any(line.strip() == "Opinion" for line in text.splitlines())
+
+
+def test_observations_section_shows_what_the_model_saw():
+    text = _text(GENUINE_WITH_IMAGES)
+    assert "4. Observations" in text
+    assert "R1" in text and "Q1" in text
+    assert "did not see the original photographs" in text
+
+
+def test_images_are_actually_embedded():
+    """The Observations grid is the point of the section; a silently empty one
+    would still render and still read as though the images were reviewed."""
+    import io
+
+    import pypdf
+
+    def image_count(payload):
+        reader = pypdf.PdfReader(io.BytesIO(report.build_pdf(payload)))
+        return sum(len(list(page.images)) for page in reader.pages)
+
+    # A 155x155 bilevel PNG compresses to almost nothing beside the
+    # letterhead, so counting bytes proves little. Count the XObjects.
+    assert image_count(GENUINE_WITH_IMAGES) == image_count(GENUINE) + 2
+
+
+def test_missing_images_are_declared_not_silently_dropped():
+    text = _text(GENUINE)
+    assert "preprocessed images were not included" in text
+
+
+def test_a_corrupt_image_does_not_lose_the_report():
+    payload = {**GENUINE, "preprocessed_ref_base64": "not base64 at all!!",
+               "preprocessed_test_base64": "also not base64"}
+    assert report.build_pdf(payload).startswith(b"%PDF")
+
+
+def test_renders_without_any_letterhead_assets(monkeypatch):
+    """A clone of the public repo has no letterhead. It must still produce a
+    report, on the plain layout."""
+    from app import letterhead
+
+    monkeypatch.setattr(letterhead, "assets", lambda: {})
+    pdf = report.build_pdf(GENUINE)
+    assert pdf.startswith(b"%PDF")
+    import io
+
+    import pypdf
+
+    text = " ".join(p.extract_text() for p in pypdf.PdfReader(io.BytesIO(pdf)).pages)
+    assert "5. Result of the comparison" in text
+    assert "not an expert opinion" in text

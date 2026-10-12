@@ -76,6 +76,16 @@ REVIEWS_DATASET = os.getenv("REVIEWS_DATASET", "").strip()  # e.g. AnkBhau/glyph
 # real protection; this keeps the convenience endpoint from being world-readable.
 ADMIN_KEY = os.getenv("ADMIN_KEY", "").strip()
 
+# --- Report letterhead --------------------------------------------------------
+# The exported PDF is rendered on the lab's letterhead. Those assets are NOT in
+# this repository on purpose: the repo and the Space are both public, and the
+# band carries accreditation marks, a QR code and office addresses - publishing
+# it would hand anyone a kit for producing documents on an accredited lab's
+# letterhead. They live in the private dataset repo and are fetched at startup.
+# Without them the report still renders, on a plain Glyph letterhead.
+LETTERHEAD_DATASET = os.getenv("LETTERHEAD_DATASET", "").strip()
+LETTERHEAD_DIR = os.getenv("LETTERHEAD_DIR", "").strip()
+
 # --- Accounts ----------------------------------------------------------------
 # One hardcoded admin, not a role system. app/auth.py::is_admin is the only
 # place this address is compared, and the browser is never told what it is -

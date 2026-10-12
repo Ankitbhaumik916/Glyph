@@ -297,6 +297,8 @@ highlight the right box.
 | `ADMIN_PASSWORD` | unset | Seeds the owner account on first boot; the signup form refuses that address |
 | `USERS_DATASET` | `$REVIEWS_DATASET` | Dataset repo holding accounts, under a `users/` prefix |
 | `SESSION_TTL_HOURS` | `168` | Session lifetime (one week) |
+| `LETTERHEAD_DATASET` | `$REVIEWS_DATASET` | Private dataset holding the report letterhead, under `letterhead/` |
+| `LETTERHEAD_DIR` | `app/assets/letterhead` | Where those assets are cached locally |
 
 ---
 
@@ -631,7 +633,30 @@ report cannot disagree with the screen it came from. The model and threshold
 metadata in the status line comes from the `/api/health` call the page has
 already made, so exporting costs no extra lookup.
 
-The layout follows the predecessor project's report — header bar, case bar,
+The report is rendered on the laboratory's letterhead and follows the house
+format: case reference line, numbered sections, an Observations grid showing
+the two preprocessed images the model actually received, and the contact bar
+with page numbers. **The letterhead assets are deliberately not in this
+repository.** The repo and the Space are both public, and the band carries
+accreditation marks, a QR code and office addresses, so committing it would
+publish a kit for producing documents on an accredited laboratory's
+letterhead. They live in the private dataset repo under `letterhead/` and are
+fetched once per process by `app/letterhead.py`; with none available the report
+renders on a plain Glyph letterhead, so a clone of this repo still works.
+
+Two things from that house format are deliberately **not** reproduced, because
+they are what make a laboratory report an expert opinion rather than a printout:
+
+- there is no examiner name, credentials section or signature block, and
+- the section the laboratory heads "Opinion" is headed "Recommendation" here.
+
+In their place, section 3 states plainly that the comparison was automated,
+that no document examiner has examined anything, that the report is not an
+expert opinion, and that it carries no signature because nobody has certified
+it. `test_report.py` fails if an examiner name, a credential, a first-person
+opinion or an "Opinion" heading ever appears in the rendered text.
+
+The section structure follows the predecessor project's report — header bar, case bar,
 boxed verdict, feature table, observations, recommendation, disclaimer with a
 report ID — and deliberately none of its logic. **That report merged the neural
 similarity with an aggregate of the forensic features into one "SWGDOC verdict"

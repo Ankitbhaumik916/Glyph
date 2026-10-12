@@ -50,6 +50,9 @@ export interface ReportPayload {
   bundle_threshold?: number | null;
   model_architecture?: string | null;
   document_type?: string | null;
+  /** The 155x155 images the model received; shown in the report's Observations. */
+  preprocessed_ref_base64?: string | null;
+  preprocessed_test_base64?: string | null;
 }
 
 /** Crop rectangle in 0-1 units of the (EXIF-oriented) image. */

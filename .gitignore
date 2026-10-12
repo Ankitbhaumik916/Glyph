@@ -48,3 +48,14 @@ Thumbs.db
 combined_split.json
 writer_split.json
 new_dataset_contact_sheet.png
+
+# Letterhead assets for the exported report. The repo and the Space are both
+# public and the band carries the lab's accreditation marks, QR code and office
+# addresses - publishing it would be a kit for forging their letterhead. They
+# live in the private dataset repo and are fetched at runtime (app/letterhead.py).
+backend/app/assets/letterhead/
+
+# Case files and exported reports. The reference report dropped in here is a
+# real client matter - a third party's name, address and signatures - and the
+# repo is public. Exports carry whatever was compared.
+*.pdf

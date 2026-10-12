@@ -82,6 +82,9 @@ export default function ResultPanel({ result, onReset, health }: Props) {
         variant_spread,
         confidence,
         forensic: result.forensic ?? null,
+        // What the model actually saw, for the report's Observations section.
+        preprocessed_ref_base64,
+        preprocessed_test_base64,
         // Metadata the status bar already holds, so the report can state the
         // operating point the run used. No extra request is made for it.
         threshold_source: live?.threshold_source ?? null,
